@@ -1,6 +1,6 @@
 """
 Name:    T-65 X-Wing Fighter Sound Simulator
-Purpose: Kickass Xmas gift for James
+Purpose: Kickass Xmas gift for my son James
 Works with pyhton3.4 and python2.7
 Thanks to Prasaanth for the help! :-)
 """
