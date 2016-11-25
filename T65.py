@@ -110,39 +110,39 @@ def start_engine():
 #    global stick
 
     if not engine_started:	
-	if not start_engine_channel.get_busy():
-	    start_engine_channel.play(start_engine_sound, maxtime=4500)
-	engine_started = True
-	#while start_engine_channel.get_busy(): #wait until engine start sound is complete
-	#    do_nothing = True
-	# Play music non-stop
+        if not start_engine_channel.get_busy():
+            start_engine_channel.play(start_engine_sound, maxtime=4500)
+        engine_started = True
+        #while start_engine_channel.get_busy(): #wait until engine start sound is complete
+        #    do_nothing = True
+        # Play music non-stop
 
 ## NEED TO FIX TO HANDLE SCENARIO WHERE JOYSTICK NOT CONNECTED 
-#	pygame.event.pump()
-#	throttle_position = stick.get_axis(3)  # get the current position of an axis
-#	print ('this is the throttle position')
-#	print (throttle_position)
-#	print ("throttle setting".format(throttle_position))
-	##convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
-	
+#       pygame.event.pump()
+#       throttle_position = stick.get_axis(3)  # get the current position of an axis
+#	    print ('this is the throttle position')
+#	    print (throttle_position)
+#	    print ("throttle setting".format(throttle_position))
+##     convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
 
 
-	
-#	engine_volume = ((1+(-1 * throttle_position)) * .5)
-#	print ("setting volume initially to ".format(engine_volume))
-#	print ("setting volume initially to ".format(engine_volume))
-#	engine_sound.set_volume(engine_volume)
-	engine_sound.set_volume(.25)  # USE THIS SETTING IF NO THROTTLE JOY STICK BUT NOT IF GETTING AXIS VALUE FROM JOYSTICK
-	engine_sound.play(-1, fade_ms=7000)  # -1 parameter makes it loop non-stop
+
+
+#       engine_volume = ((1+(-1 * throttle_position)) * .5)
+#       print ("setting volume initially to ".format(engine_volume))
+#       print ("setting volume initially to ".format(engine_volume))
+#       engine_sound.set_volume(engine_volume)
+        engine_sound.set_volume(.25)  # USE THIS SETTING IF NO THROTTLE JOY STICK BUT NOT IF GETTING AXIS VALUE FROM JOYSTICK
+        engine_sound.play(-1, fade_ms=7000)  # -1 parameter makes it loop non-stop
 
 # initialize music & volume - need to preload with all music
-#	pygame.mixer.music.set_volume(.25)
-#	pygame.mixer.music.play(-1, fade_ms=9000)  # -1 parameter makes it loop non-stop
+#	    pygame.mixer.music.set_volume(.25)
+#	    pygame.mixer.music.play(-1, fade_ms=9000)  # -1 parameter makes it loop non-stop
 
 
 
 def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays Between
-	
+
     # Need this here to say that we want to modify the global copy
     global timerDict
     global timeElapsed
@@ -167,15 +167,15 @@ def stop_r2_with_random_delays(): #turn off Random R2 sounds
 
 def play_r2():
     print('play_r2 function entered.')
-    if engine_started:	
-	if not r2_channel.get_busy():  
-            print("not busy")  
-            soundwav = random.choice(r2_sound_files)	
+    if engine_started:
+        if not r2_channel.get_busy():
+            print("not busy")
+            soundwav = random.choice(r2_sound_files)
             r2d2sound1 = pygame.mixer.Sound(soundwav)
             r2_channel.play(r2d2sound1)
 
 def play_radio_with_random_delays():   #Play random radio Sounds, with Random Delays Between
-	
+
     # Need this here to say that we want to modify the global copy
     global timerDict
     global timeElapsed
@@ -201,9 +201,9 @@ def stop_radio_with_random_delays(): #turn off Random radio sounds
 def play_radio():
     print('play_radio function entered.')
     if engine_started:	
-	if not radio_channel.get_busy():  
-            print("not busy")  
-            soundwav = random.choice(radio_sound_files)	
+        if not radio_channel.get_busy():
+            print("not busy")
+            soundwav = random.choice(radio_sound_files)
             radiosound1 = pygame.mixer.Sound(soundwav)
             radio_channel.play(radiosound1)
 
@@ -211,10 +211,10 @@ def engage_hyperdrive():
     print('engage_hyperdrive function entered.')
     if engine_started:	
         if not hyperdrive_channel.get_busy():  
-	    if foil_position_closed:
-	        hyperdrive_channel.play(hyperdrive_sound)
-	    else:
-		error_sound.play()
+            if foil_position_closed:
+                hyperdrive_channel.play(hyperdrive_sound)
+            else:
+                error_sound.play()
 
 def open_foil():
     global foil_position_closed
@@ -222,8 +222,8 @@ def open_foil():
     print('open_foil function entered.')
     if engine_started:	
         if not foil_channel.get_busy():  
-	    foil_channel.play(foil_sound)
-	foil_position_closed = False
+            foil_channel.play(foil_sound)
+    foil_position_closed = False
 
 def close_foil():
     global foil_position_closed
@@ -231,164 +231,163 @@ def close_foil():
     print('close_foil function entered.')
     if engine_started:	
         if not foil_channel.get_busy():  
-	    foil_channel.play(foil_sound)
-	foil_position_closed = True
+            foil_channel.play(foil_sound)
+        foil_position_closed = True
 
 def select_weapon(self):
     global weapon_selected
     
     if engine_started:    
         weapon_selected = self 
-	button_press_sound.play()
+        button_press_sound.play()
 
       
 def fire_weapon():
 #    if (engine_started and weapons_armed): #example of checking two flags! Remember to add Global weapons_armed
     if engine_started:
         print('fire_weapon function entered.')
-	if weapon_selected == 1:
+        if weapon_selected == 1:
             laser1_sound.play()
-	elif weapon_selected == 2:
-	    laser2_sound.play()
-	elif weapon_selected == 3:
-	    laser3_sound.play()
-	elif weapon_selected == 4:
-	    torpedo_sound.play()
+        elif weapon_selected == 2:
+            laser2_sound.play()
+        elif weapon_selected == 3:
+            laser3_sound.play()
+        elif weapon_selected == 4:
+            torpedo_sound.play()
 
 def turn_on_microphone():
     if engine_started:
-	print('microphone on')
-	microphone_on_sound.play()
-	
+        print('microphone on')
+        microphone_on_sound.play()
+
 def turn_off_microphone():
     if engine_started:
-	print('microphone off')  #consider doing this on a channel so it can't repeat
-	#consider adding static sound before R2 replies... may need to wait till sound is done to play R2
-	microphone_on_sound.play()
-	play_r2()
+        print('microphone off')  #consider doing this on a channel so it can't repeat
+        #consider adding static sound before R2 replies... may need to wait till sound is done to play R2
+        microphone_on_sound.play()
+        play_r2()
 
 def play_hat():
     if engine_started:
-	print('joystick hat button moved')
-	error_sound.play()
+        print('joystick hat button moved')
+        error_sound.play()
 
 def play_turn_sound():
     if engine_started:
-	print('Xwing turning moved')
-	xwing_turn_sound.play()
+        print('Xwing turning moved')
+        xwing_turn_sound.play()
 
 
 def read_joystick_and_keyboard():
     #print("reading joystick")
     for event in pygame.event.get():
-	if event.type == pygame.QUIT:
-  	    sys.exit()          
-	#print (event.type)	
-	if event.type == pygame.KEYDOWN:
-	    print("keyboard KEYDOWN")
-  	    if event.key == pygame.K_s:
+        if event.type == pygame.QUIT:
+            sys.exit()
+        #print (event.type)
+        if event.type == pygame.KEYDOWN:
+            print("keyboard KEYDOWN")
+            if event.key == pygame.K_s:
                 print("Key s down")
-		start_engine()		
-	    elif event.key == pygame.K_1:
-         	print("Key 1 down")
-		select_weapon(1)
-  	    elif event.key == pygame.K_2:
+                start_engine()
+            elif event.key == pygame.K_1:
+                print("Key 1 down")
+                select_weapon(1)
+            elif event.key == pygame.K_2:
                 print("Key 2 down")
                 select_weapon(2)
-  	    elif event.key == pygame.K_3:
+            elif event.key == pygame.K_3:
                 print("Key 3 down")
                 select_weapon(3)
-  	    elif event.key == pygame.K_4:
+            elif event.key == pygame.K_4:
                 print("Key 4 down")
                 select_weapon(4)
- 	    elif event.key == pygame.K_r:
+            elif event.key == pygame.K_r:
                 print("Key r down")
-    		play_r2_with_random_delays()  
-  	    elif event.key == pygame.K_h:
+                play_r2_with_random_delays()
+            elif event.key == pygame.K_h:
                 print("Key h down")
-		engage_hyperdrive()
-  	    elif event.key == pygame.K_SPACE:
+                engage_hyperdrive()
+            elif event.key == pygame.K_SPACE:
                 print("Key SPACE down")
-		fire_weapon()
-  	    elif event.key == pygame.K_f:
+                fire_weapon()
+            elif event.key == pygame.K_f:
                 print("Key f down")
-		if foil_position_closed:
-		    open_foil()
-		else:
-		    close_foil()
-	    elif event.key == pygame.K_q:
-		sys.exit()
-	if event.type == pygame.KEYUP:
-	    print("keyboard KEYUP")
-	    if event.key == pygame.K_r:
-         	print("Key r up")
-		stop_r2_with_random_delays() 
- 	if event.type == pygame.JOYBUTTONDOWN:
+                if foil_position_closed:
+                    open_foil()
+                else:
+                    close_foil()
+            elif event.key == pygame.K_q:
+                sys.exit()
+        if event.type == pygame.KEYUP:
+            print("keyboard KEYUP")
+            if event.key == pygame.K_r:
+                print("Key r up")
+                stop_r2_with_random_delays()
+        if event.type == pygame.JOYBUTTONDOWN:
             button = event.button
-	    if button == 0:
-		fire_weapon()
-	    elif button == 1:
-		turn_on_microphone()
-	    elif button == 2:
-		select_weapon(2)
-	    elif button == 3:
-		select_weapon(3)
-	    elif button == 4:  # order of weapon selection button on joy not in order
-		select_weapon(1)
-	    elif button == 5:
-		select_weapon(4)
-	    elif button == 6:
-		engage_hyperdrive()
-	    elif button == 7:
-		fire_weapon()
-	    elif button == 8:
-		open_foil()
-	    elif button == 9:
-		close_foil()
-	    elif button == 10:
-		play_radio_with_random_delays()
-	    elif button == 11:
-    		play_r2_with_random_delays()  #on button ON call random music function
+            if button == 0:
+                fire_weapon()
+            elif button == 1:
+                turn_on_microphone()
+            elif button == 2:
+                select_weapon(2)
+            elif button == 3:
+                select_weapon(3)
+            elif button == 4:  # order of weapon selection button on joy not in order
+                select_weapon(1)
+            elif button == 5:
+                select_weapon(4)
+            elif button == 6:
+                engage_hyperdrive()
+            elif button == 7:
+                fire_weapon()
+            elif button == 8:
+                open_foil()
+            elif button == 9:
+                close_foil()
+            elif button == 10:
+                play_radio_with_random_delays()
+            elif button == 11:
+                play_r2_with_random_delays()  #on button ON call random music function
             print("Button {} on".format(button))
         if event.type == pygame.JOYBUTTONUP:
             button = event.button
-	    if button == 1:
-		turn_off_microphone()
-	    elif button == 11:
-		stop_r2_with_random_delays() #turn off Random R2 sounds
-	    elif button == 10:
-		stop_radio_with_random_delays() 
+            if button == 1:
+                turn_off_microphone()
+            elif button == 11:
+                stop_r2_with_random_delays() #turn off Random R2 sounds
+            elif button == 10:
+                stop_radio_with_random_delays()
             print("Button {} off".format(button))
+
         if event.type == pygame.JOYHATMOTION:
             if event.hat == 0:
                 print("event value hat axis 0: {}".format(event.value))
-		play_hat()
+                play_hat()
         if event.type == pygame.JOYAXISMOTION:
             if event.axis == 0:
                 print("event value axis 0: {}".format(event.value))
- 		axis_value = event.value
-		if event.value > 0.7:
-		    play_turn_sound()
-		elif event.value < -0.7:
-		    play_turn_sound()
+                if event.value > 0.7:
+                    play_turn_sound()
+                elif event.value < -0.7:
+                    play_turn_sound()
             elif event.axis == 1:
                 print("event value axis 1: {}".format(event.value))
                 print("event value axis 0: {}".format(event.value))
- 		axis_value = event.value
-		if event.value > 0.7:
-		    play_turn_sound()
-		elif event.value < -0.7:
-		    play_turn_sound()
+                if event.value > 0.7:
+                    play_turn_sound()
+                elif event.value < -0.7:
+                    play_turn_sound()
             elif event.axis == 2:
                 print("event value axis 2: {}".format(event.value))
             elif event.axis == 3:
-		print("event value axis 3: {}".format(event.value))
-		#convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
-		engine_volume = ((1+(-1 * event.value)) * .5)
-		pygame.mixer.music.set_volume(engine_volume)
-		#engine_volume = event.value
-		print(engine_volume)
-               # self.verticalPosition = event.value
+                print("event value axis 3: {}".format(event.value))
+                #convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
+                engine_volume = ((1+(-1 * event.value)) * .5)
+                pygame.mixer.music.set_volume(engine_volume)
+                engine_volume = event.value
+                print(engine_volume)
+               #self.verticalPosition = event.value
 
 ## game loop
 gameloop = True
@@ -409,9 +408,10 @@ if __name__ == '__main__':
     print('Press f to open & close foil')
     print('Press & hold r for R2 Radio')
     while gameloop:
-	read_joystick_and_keyboard()
-	#read_gpio()
+        read_joystick_and_keyboard()
+        #read_gpio()
   
-    # Print END PROGRAM Statement
+        # Print END PROGRAM Statement
     print('END PROGRAM')
-    pygame.quit() # clean exit 
+    pygame.quit() # clean exit
+
