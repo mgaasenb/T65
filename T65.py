@@ -17,6 +17,7 @@ import random
 from random import randint
 from threading import Timer
 
+
 # Initiate Global Flags & States
 timer_dict = dict() #these are global same level as import
 timeElapsed = 0 #used for random delays
@@ -29,9 +30,17 @@ foil_position_closed = True
 #check if running on Raspberry Pi
 if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop 
     running_on_pi = True
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(22,GPIO.IN)
+    GPIO.setup(27,GPIO.OUT)
+    #input = GPIO.input(22)
+    gpio_27_flag = True
+    GPIO.output(27,gpio_27_flag)
+
 else:
     running_on_pi = False
-    
+channel = 22    
 
 
 # Initiate display window, required to collect key board input
@@ -396,14 +405,14 @@ def read_joystick_and_keyboard():
 
 
 
-GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback, bouncetime=200)
 
 def my_callback(channel):
     print('This is a edge event callback function!')
     print('Edge detected on channel %s'%channel)
     print('This is run in a different thread to your main program')
+    error_sound.play()
 
-
+GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback)
 #GPIO.add_event_detect(channel, GPIO.RISING)
 #GPIO.add_event_callback(channel, my_callback_one)
 #GPIO.add_event_callback(channel, my_callback_two)
@@ -431,10 +440,7 @@ if __name__ == '__main__':
 
     while gameloop:
         read_joystick_and_keyboard()
-        GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback)
-        #read_gpio()
-  
-        # Print END PROGRAM Statement
+          # Print END PROGRAM Statement
     print('END PROGRAM')
 
 
