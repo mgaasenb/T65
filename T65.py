@@ -427,6 +427,8 @@ if __name__ == '__main__':
     print('Press h for hyperdrive')
     print('Press f to open & close foil')
     print('Press & hold r for R2 Radio')
+
+
     while gameloop:
         read_joystick_and_keyboard()
         GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback)
