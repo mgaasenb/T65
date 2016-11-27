@@ -18,7 +18,7 @@ from random import randint
 from threading import Timer
 
 # Initiate Global Flags & States
-timerDict = dict() #these are global same level as import
+timer_dict = dict() #these are global same level as import
 timeElapsed = 0 #used for random delays
 key_on = False
 main_power_on = False
@@ -26,7 +26,12 @@ engine_started = False
 weapon_selected = 1
 foil_position_closed = True
 
-# get initial GPIO settings and set States for switches, key, power, armed, radios 
+#check if running on Raspberry Pi
+if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop 
+    running_on_pi = True
+else:
+    running_on_pi = False
+    
 
 
 # Initiate display window, required to collect key board input
@@ -144,7 +149,7 @@ def start_engine():
 def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays Between
 
     # Need this here to say that we want to modify the global copy
-    global timerDict
+    global timer_dict
     global timeElapsed
     global engine_started
 
@@ -155,15 +160,15 @@ def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays B
     print(': play_r2_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
 
     # Create New Timer Task
-    timerTask = Timer(delay, play_r2_with_random_delays, ())
-    timerDict['RANDOM_R2_SOUNDS_TIMER'] = timerTask  #name of timer instance (could r2RandomSounds)
+    timer_task = Timer(delay, play_r2_with_random_delays, ())
+    timer_dict['RANDOM_R2_SOUNDS_TIMER'] = timer_task  #name of timer instance (could r2RandomSounds)
 
     # Start Timer Task
-    timerTask.start()
+    timer_task.start()
 
 def stop_r2_with_random_delays(): #turn off Random R2 sounds
-    timerTask = timerDict['RANDOM_R2_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right timerDict for the timer you are using...
-    timerTask.cancel()
+    timer_task = timer_dict['RANDOM_R2_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right timer_dict for the timer you are using...
+    timer_task.cancel()
 
 def play_r2():
     print('play_r2 function entered.')
@@ -177,7 +182,7 @@ def play_r2():
 def play_radio_with_random_delays():   #Play random radio Sounds, with Random Delays Between
 
     # Need this here to say that we want to modify the global copy
-    global timerDict
+    global timer_dict
     global timeElapsed
     global engine_started
 
@@ -188,15 +193,15 @@ def play_radio_with_random_delays():   #Play random radio Sounds, with Random De
     print(': play_radio_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
 
     # Create New Timer Task
-    timerTask = Timer(delay, play_radio_with_random_delays, ())
-    timerDict['RANDOM_radio_SOUNDS_TIMER'] = timerTask  #name of timer instance (could radioRandomSounds)
+    timer_task = Timer(delay, play_radio_with_random_delays, ())
+    timer_dict['RANDOM_radio_SOUNDS_TIMER'] = timer_task  #name of timer instance (could radioRandomSounds)
 
     # Start Timer Task
-    timerTask.start()
+    timer_task.start()
 
 def stop_radio_with_random_delays(): #turn off Random radio sounds
-    timerTask = timerDict['RANDOM_radio_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right timerDict for the timer you are using...
-    timerTask.cancel()
+    timer_task = timer_dict['RANDOM_radio_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right timer_dict for the timer you are using...
+    timer_task.cancel()
 
 def play_radio():
     print('play_radio function entered.')
@@ -389,11 +394,26 @@ def read_joystick_and_keyboard():
                 print(engine_volume)
                #self.verticalPosition = event.value
 
+
+
+GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback, bouncetime=200)
+
+def my_callback(channel):
+    print('This is a edge event callback function!')
+    print('Edge detected on channel %s'%channel)
+    print('This is run in a different thread to your main program')
+
+
+#GPIO.add_event_detect(channel, GPIO.RISING)
+#GPIO.add_event_callback(channel, my_callback_one)
+#GPIO.add_event_callback(channel, my_callback_two)
+
+
 ## game loop
 gameloop = True
 if __name__ == '__main__':
     # Need this here to say that we want to modify the global copy
-    global timerDict
+    global timer_dict
 
     # Print BEGIN PROGRAM Statement
     print('MAKE SURE LITTLE WINDOW HAS FOCUS FOR KEYBOARD KEYS ENTRY TO WORK')
@@ -409,9 +429,12 @@ if __name__ == '__main__':
     print('Press & hold r for R2 Radio')
     while gameloop:
         read_joystick_and_keyboard()
+        GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback)
         #read_gpio()
   
         # Print END PROGRAM Statement
     print('END PROGRAM')
+
+
     pygame.quit() # clean exit
 
