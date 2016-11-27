@@ -4,6 +4,7 @@ Purpose: Kickass Xmas gift for my son James
 Works with pyhton3.4 and python2.7
 Thanks to Prasaanth for the help! :-)
 From GIT Repository... edited on VM!
+updated on Pi!
 """
 
 #the next line is only needed for python2.x and not necessary for python3.x
@@ -416,6 +417,7 @@ GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback)
 #GPIO.add_event_detect(channel, GPIO.RISING)
 #GPIO.add_event_callback(channel, my_callback_one)
 #GPIO.add_event_callback(channel, my_callback_two)
+
 
 
 ## game loop
