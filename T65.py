@@ -32,21 +32,6 @@ foil_position_closed = True
 gpio_27_flag = False
 
 
-#check if running on Raspberry Pi
-if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop 
-    running_on_pi = True
-    import RPi.GPIO as GPIO
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(22,GPIO.IN)
-    GPIO.setup(17,GPIO.IN)
-    GPIO.setup(27,GPIO.OUT)
-    #input = GPIO.input(22)
-else:
-    running_on_pi = False
-channel = 22    
-
-
-
 # Initiate display window, required to collect key board input
 game_display = pygame.display.set_mode((800, 600))
 #xwing_image = pygame.image.load('xwing.png')
@@ -59,7 +44,7 @@ game_display.fill((0,0,0))
 pygame.mixer.pre_init(44100, -16, 2, 2048) # setup mixer to avoid sound lag (try reducing/increasing last number default is 3072)
 #pygame.mixer.pre_init(44100, -16, 2, 64) # testing even smaller buffer
 
-pygame.mixer.init()
+pygame.mixer.init()                        #************ Figure out if I need both the mixer.init & the  .init in the next line, also does the second once cancel my pre-init settings
 pygame.init()                              #initialize pygame
 
 
@@ -78,10 +63,9 @@ else:
     get_input = input # python3
 
 
-# load individual sounds files
+# load sounds files
 
 # pygame.mixer.music.load('sounds/music.wav')  #music, update to select from all music files*****
-
 engine_sound = pygame.mixer.Sound('sounds/engine.wav')
 laser1_sound = pygame.mixer.Sound('sounds/laser1.wav')
 laser2_sound = pygame.mixer.Sound('sounds/laser2.wav')
@@ -95,7 +79,6 @@ hyperdrive_sound = pygame.mixer.Sound('sounds/hyperdrive.wav')
 start_engine_sound = pygame.mixer.Sound('sounds/startengine.wav') 
 xwing_turn_sound = pygame.mixer.Sound('sounds/xwing_turn.wav') 
 xwing_turn_sound.set_volume(.3)
-
 #failed_start_engine_sound = # Add randomly failed starts!
 foil_sound = pygame.mixer.Sound('sounds/foil.wav')  #UPDATE WITH BETTER FOIL SOUND or make louder ???*****
 
@@ -103,7 +86,6 @@ foil_sound = pygame.mixer.Sound('sounds/foil.wav')  #UPDATE WITH BETTER FOIL SOU
 r2_sound_files = glob.glob("sounds/r2d2_*.wav")
 radio_sound_files = glob.glob("sounds/radio_*.wav")
 yoda_sound_files = glob.glob("sounds/yoda_*.wav")
-
 
 #Configure Channels for Sound that can't overlap, share some of the same channels, if no chance of overlap
 #************* FIX - come back and reserve these channels using pygame.mixer.set_reserved
@@ -116,12 +98,125 @@ hyperdrive_channel = pygame.mixer.Channel(4)
 start_engine_channel = pygame.mixer.Channel(5) 
 foil_channel = pygame.mixer.Channel(6) 
 
+#define GPIO Pin assignment
+shared_led_power_gpio_pin = 2
+lock_gpio_pin = 3
+ignition_gpio_pin = 4
+engine_start_gpio_pin = 5
+engine_start_led_gpio_pin = 6
+foil_gpio_pin = 7
+landing_gear_gpio_pin = 8
+hyperdrive_gpio_pin = 9
+arm_weapons_gpio_pin = 10
+#arm_weapons_led_gpio_pin = 10
+r2_radio_gpio_pin = 11
+alliance_radio_gpio_pin = 12
+
+f1_button_gpio_pin = 13
+f1_led_gpio_pin = 14
+f2_button_gpio_pin = 15
+f2_led_gpio_pin = 16
+f3_button_gpio_pin = 17
+f3_led_gpio_pin = 18
+f4_button_gpio_pin = 19
+f4_led_gpio_pin = 20
+f5_button_gpio_pin = 21
+f5_led_gpio_pin = 22
+f6_button_gpio_pin = 23
+f6_led_gpio_pin = 24
+f7_button_gpio_pin = 25
+f7_led_gpio_pin = 26
+f8_button_gpio_pin = 27
+f8_led_gpio_pin = 26   # Two of the function keys LEDs may need to share a power, and always flash together...
+
+#check if running on Raspberry Pi
+if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop
+    running_on_pi = True
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(22,GPIO.IN)
+    GPIO.setup(17,GPIO.IN)
+    GPIO.setup(27,GPIO.OUT)
+
+    GPIO.add_event_detect(22, GPIO.RISING, callback=my_callback, bouncetime=400)  #SAMPLE ON RISE EVENT CALL my_callback
+    GPIO.add_event_detect(17, GPIO.RISING, callback=my_callback2, bouncetime=400) #SAMPLE ON RISE EVENT CALL my_callback2
+
+else:
+    running_on_pi = False
+
+def my_callback(channel):  # Test of a push button, play flag toggle output of GPIO 27
+    global gpio_27_flag
+    # global mythread
+
+    print('This is a edge event callback function!')
+    print('Edge detected on channel %s' % channel)
+    print('This is run in a different thread to your main program')
+
+    error_sound.play()
+    if running_on_pi:
+        if gpio_27_flag:
+            mythread.stopflash()
+            gpio_27_flag = False
+        else:
+            gpio_27_flag = True
+            # GPIO.output(27,gpio_27_flag)
+            mythread.startflash()
+
+
+def my_callback2(channel):
+    print('This is a edge event callback function!')
+    print('Edge detected on channel %s' % channel)
+    print('This is run in a different thread to your main program')
+    button_press_sound.play()
+    if running_on_pi:
+        if GPIO.input(channel):
+            print("Switch ON")
+        else:
+            print("Switch off")
+
+
+#Flashy Light Code - to control LEDs
+class LedThread(Thread):
+    def __init__(self):
+        super(LedThread, self).__init__()
+        self._keepgoing = True
+        self._flashLED = False
+
+    def run(self):
+        print("LedThread is running")
+        while self._keepgoing:
+            if self._flashLED:
+                GPIO.output(27, True)
+                time.sleep(.5)
+                GPIO.output(27, False)
+                time.sleep(.5)
+
+    def stopflash(self):
+        self._flashLED = False
+        GPIO.output(27, False)
+
+        print("LEDThread-stopflash called")
+
+    def startflash(self):
+        self._flashLED = True
+        print("LEDThread-flash called")
+
+    def kill(self):
+        self._keepgoing = False
+        GPIO.output(27, False)
+
+
+mythread = LedThread()  # this needs to be initialized... not sure where
+mythread.start()
+
+
+
+
 #def turn_on_main_power():
 #    global main_power_on
-#    
-#    if key_on: 
+#
+#    if key_on:
 #	main_power_on
-
 
 def start_engine():
     global engine_started
@@ -142,10 +237,6 @@ def start_engine():
 #	    print (throttle_position)
 #	    print ("throttle setting".format(throttle_position))
 ##     convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
-
-
-
-
 #       engine_volume = ((1+(-1 * throttle_position)) * .5)
 #       print ("setting volume initially to ".format(engine_volume))
 #       print ("setting volume initially to ".format(engine_volume))
@@ -156,8 +247,6 @@ def start_engine():
 # initialize music & volume - need to preload with all music
 #	    pygame.mixer.music.set_volume(.25)
 #	    pygame.mixer.music.play(-1, fade_ms=9000)  # -1 parameter makes it loop non-stop
-
-
 
 def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays Between
 
@@ -259,7 +348,6 @@ def select_weapon(self):
         weapon_selected = self 
         button_press_sound.play()
 
-      
 def fire_weapon():
 #    if (engine_started and weapons_armed): #example of checking two flags! Remember to add Global weapons_armed
     if engine_started:
@@ -295,13 +383,11 @@ def play_turn_sound():
         print('Xwing turning moved')
         xwing_turn_sound.play()
 
-
 def read_joystick_and_keyboard():
     #print("reading joystick")
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             sys.exit()
-        #print (event.type)
         if event.type == pygame.KEYDOWN:
             print("keyboard KEYDOWN")
             if event.key == pygame.K_s:
@@ -409,87 +495,6 @@ def read_joystick_and_keyboard():
                 print(engine_volume)
                #self.verticalPosition = event.value
 
-
-##########################
-class LedThread(Thread):
-     
-    def __init__(self):
-        super(LedThread, self).__init__()
-        self._keepgoing = True
-        self._flashLED = False
-
-    def run(self):
-        print("LedThread is running")
-        while self._keepgoing:
-            if self._flashLED:
-                GPIO.output(27, True)
-                time.sleep(.5)
-                GPIO.output(27, False)
-                time.sleep(.5)   
-
-    def stopflash(self):
-        self._flashLED = False
-        GPIO.output(27, False)
-
-        print("LEDThread-stopflash called")
- 
-    def startflash(self):
-        self._flashLED = True
-        print("LEDThread-flash called")
-
-
-    def kill(self):
-        self._keepgoing = False
-        GPIO.output(27,False)
-
-
-mythread = LedThread()  #this needs to be initialized... not sure where
-mythread.start()
-
-
- 
-
-                
-#########################
-
-
-def my_callback(channel): #Test of a push button, play flag toggle output of GPIO 27
-    global gpio_27_flag
-    #global mythread
-    
-    print('This is a edge event callback function!')
-    print('Edge detected on channel %s'%channel)
-    print('This is run in a different thread to your main program')
-
-    
-    error_sound.play()
-    if gpio_27_flag == True:
-        mythread.stopflash()
-        gpio_27_flag = False
-    else:
-        gpio_27_flag = True
-        #GPIO.output(27,gpio_27_flag)
-        mythread.startflash()
-
-def my_callback2(channel):
-    print('This is a edge event callback function!')
-    print('Edge detected on channel %s'%channel)
-    print('This is run in a different thread to your main program')
-    button_press_sound.play()
-    if GPIO.input(channel):
-        print("Switch ON")
-    else:
-        print("Switch off")
-
-
-GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback, bouncetime=400q)
-GPIO.add_event_detect(17, GPIO.RISING, callback=my_callback2, bouncetime=400)
-
-#GPIO.add_event_detect(channel, GPIO.RISING)
-#GPIO.add_event_callback(channel, my_callback_one)
-#GPIO.add_event_callback(channel, my_callback_two)
-
-
 ## game loop
 gameloop = True
 if __name__ == '__main__':
@@ -509,13 +514,10 @@ if __name__ == '__main__':
     print('Press f to open & close foil')
     print('Press & hold r for R2 Radio')
 
-
     while gameloop:
         read_joystick_and_keyboard()
           # Print END PROGRAM Statement
         time.sleep(0.01) #adding this gives subprocesses like detecting GPIO time to do their thing, fixed delay when pressing GPIO button
     print('END PROGRAM')
-
-
     pygame.quit() # clean exit
 
