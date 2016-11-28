@@ -4,7 +4,6 @@ Purpose: Kickass Xmas gift for my son James
 Works with pyhton3.4 and python2.7
 Thanks to Prasaanth for the help! :-)
 From GIT Repository... edited on VM!
-updated on Pi!
 """
 
 #the next line is only needed for python2.x and not necessary for python3.x
@@ -14,9 +13,12 @@ import pygame
 import os
 import sys
 import glob
-import random 
+import random
+import threading
+import time
 from random import randint
 from threading import Timer
+from threading import Thread
 
 
 # Initiate Global Flags & States
@@ -27,6 +29,8 @@ main_power_on = False
 engine_started = False
 weapon_selected = 1
 foil_position_closed = True
+gpio_27_flag = False
+
 
 #check if running on Raspberry Pi
 if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop 
@@ -34,14 +38,13 @@ if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' f
     import RPi.GPIO as GPIO
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(22,GPIO.IN)
+    GPIO.setup(17,GPIO.IN)
     GPIO.setup(27,GPIO.OUT)
     #input = GPIO.input(22)
-    gpio_27_flag = True
-    GPIO.output(27,gpio_27_flag)
-
 else:
     running_on_pi = False
 channel = 22    
+
 
 
 # Initiate display window, required to collect key board input
@@ -332,6 +335,8 @@ def read_joystick_and_keyboard():
                 else:
                     close_foil()
             elif event.key == pygame.K_q:
+                pygame.quit()
+                mythread.kill()
                 sys.exit()
         if event.type == pygame.KEYUP:
             print("keyboard KEYUP")
@@ -405,19 +410,84 @@ def read_joystick_and_keyboard():
                #self.verticalPosition = event.value
 
 
+##########################
+class LedThread(Thread):
+     
+    def __init__(self):
+        super(LedThread, self).__init__()
+        self._keepgoing = True
+        self._flashLED = False
+
+    def run(self):
+        print("LedThread is running")
+        while self._keepgoing:
+            if self._flashLED:
+                GPIO.output(27, True)
+                time.sleep(.5)
+                GPIO.output(27, False)
+                time.sleep(.5)   
+
+    def stopflash(self):
+        self._flashLED = False
+        GPIO.output(27, False)
+
+        print("LEDThread-stopflash called")
+ 
+    def startflash(self):
+        self._flashLED = True
+        print("LEDThread-flash called")
 
 
-def my_callback(channel):
+    def kill(self):
+        self._keepgoing = False
+        GPIO.output(27,False)
+
+
+mythread = LedThread()  #this needs to be initialized... not sure where
+mythread.start()
+
+
+ 
+
+                
+#########################
+
+
+def my_callback(channel): #Test of a push button, play flag toggle output of GPIO 27
+    global gpio_27_flag
+    #global mythread
+    
     print('This is a edge event callback function!')
     print('Edge detected on channel %s'%channel)
     print('This is run in a different thread to your main program')
-    error_sound.play()
 
-GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback)
+    
+    error_sound.play()
+    if gpio_27_flag == True:
+        mythread.stopflash()
+        gpio_27_flag = False
+    else:
+        gpio_27_flag = True
+        #GPIO.output(27,gpio_27_flag)
+        mythread.startflash()
+
+def my_callback2(channel):
+    print('This is a edge event callback function!')
+    print('Edge detected on channel %s'%channel)
+    print('This is run in a different thread to your main program')
+    button_press_sound.play()
+    if GPIO.input(channel):
+        print("Switch ON")
+    else:
+        print("Switch off")
+
+
+GPIO.add_event_detect(channel, GPIO.RISING, callback=my_callback, bouncetime=400q)
+GPIO.add_event_detect(17, GPIO.RISING, callback=my_callback2, bouncetime=400)
+
 #GPIO.add_event_detect(channel, GPIO.RISING)
 #GPIO.add_event_callback(channel, my_callback_one)
 #GPIO.add_event_callback(channel, my_callback_two)
-
 
 
 ## game loop
@@ -443,6 +513,7 @@ if __name__ == '__main__':
     while gameloop:
         read_joystick_and_keyboard()
           # Print END PROGRAM Statement
+        time.sleep(0.01) #adding this gives subprocesses like detecting GPIO time to do their thing, fixed delay when pressing GPIO button
     print('END PROGRAM')
 
 
