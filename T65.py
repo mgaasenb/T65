@@ -94,9 +94,12 @@ engine_channel = pygame.mixer.Channel(1)
 pygame.mixer.set_reserved(1)
 r2_channel = pygame.mixer.Channel(2) 
 radio_channel = pygame.mixer.Channel(3)
-hyperdrive_channel = pygame.mixer.Channel(4) 
-start_engine_channel = pygame.mixer.Channel(5) 
-foil_channel = pygame.mixer.Channel(6) 
+yoda_channel = pygame.mixer.Channel(4)
+hyperdrive_channel = pygame.mixer.Channel(5) 
+start_engine_channel = pygame.mixer.Channel(6) 
+foil_channel = pygame.mixer.Channel(7) 
+
+
 
 #define GPIO Pin assignment
 shared_led_power_gpio_pin = 2
@@ -174,7 +177,7 @@ def my_callback2(channel):
         else:
             print("Switch off")
 
-
+################################ START OF FLASHY LIGHT SAMPLE CODE ############################
 #Flashy Light Code - to control LEDs
 class LedThread(Thread):
     def __init__(self):
@@ -208,7 +211,7 @@ class LedThread(Thread):
 
 mythread = LedThread()  # this needs to be initialized... not sure where
 mythread.start()
-
+################################ END OF FLASHY LIGHT SAMPLE CODE ############################
 
 
 
@@ -253,7 +256,6 @@ def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays B
     # Need this here to say that we want to modify the global copy
     global timer_dict
     global timeElapsed
-    global engine_started
 
     play_r2() #calls function to play Random R2 sounds
     # Calculate Delay
@@ -286,7 +288,6 @@ def play_radio_with_random_delays():   #Play random radio Sounds, with Random De
     # Need this here to say that we want to modify the global copy
     global timer_dict
     global timeElapsed
-    global engine_started
 
     play_radio() #calls function to play Random radio sounds
     # Calculate Delay
@@ -313,6 +314,37 @@ def play_radio():
             soundwav = random.choice(radio_sound_files)
             radiosound1 = pygame.mixer.Sound(soundwav)
             radio_channel.play(radiosound1)
+
+def play_yoda_with_random_delays():   #Play random yoda Sounds, with Random Delays Between
+    # Need this here to say that we want to modify the global copy
+    global timer_dict
+    global timeElapsed
+
+    play_yoda() #calls function to play Random radio sounds
+    # Calculate Delay
+    delay = randint(1,3);
+    timeElapsed += delay
+    print(': play_yoda_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
+
+    # Create New Timer Task
+    timer_task = Timer(delay, play_radio_with_random_delays, ())
+    timer_dict['RANDOM_yoda_SOUNDS_TIMER'] = timer_task  #name of timer instance (could radioRandomSounds)
+
+    # Start Timer Task
+    timer_task.start()
+
+def stop_yoda_with_random_delays(): #turn off Random radio sounds
+    timer_task = timer_dict['RANDOM_yoda_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right timer_dict for the timer you are using...
+    timer_task.cancel()
+
+def play_yoda():
+    print('play_yoda function entered.')
+    if engine_started:	
+        if not yoda_channel.get_busy():
+            print("not busy")
+            soundwav = random.choice(yoda_sound_files)
+            yodasound1 = pygame.mixer.Sound(soundwav)
+            yoda_channel.play(yodasound1)
 
 def engage_hyperdrive():
     print('engage_hyperdrive function entered.')
@@ -387,6 +419,8 @@ def read_joystick_and_keyboard():
     #print("reading joystick")
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            pygame.quit()
+            mythread.kill()
             sys.exit()
         if event.type == pygame.KEYDOWN:
             print("keyboard KEYDOWN")
@@ -408,6 +442,12 @@ def read_joystick_and_keyboard():
             elif event.key == pygame.K_r:
                 print("Key r down")
                 play_r2_with_random_delays()
+            elif event.key == pygame.K_y:
+                print("Key y down")
+                play_yoda_with_random_delays()
+            elif event.key == pygame.K_a:
+                print("Key a down")
+                play_radio_with_random_delays()
             elif event.key == pygame.K_h:
                 print("Key h down")
                 engage_hyperdrive()
@@ -429,6 +469,12 @@ def read_joystick_and_keyboard():
             if event.key == pygame.K_r:
                 print("Key r up")
                 stop_r2_with_random_delays()
+            if event.key == pygame.K_y:
+                print("Key y up")
+                stop_yoda_with_random_delays()
+            if event.key == pygame.K_a:
+                print("Key a up")
+                stop_radio_with_random_delays()
         if event.type == pygame.JOYBUTTONDOWN:
             button = event.button
             if button == 0:
@@ -493,7 +539,8 @@ def read_joystick_and_keyboard():
                 pygame.mixer.music.set_volume(engine_volume)
                 engine_volume = event.value
                 print(engine_volume)
-               #self.verticalPosition = event.value
+              #self.verticalPosition = event.value
+
 
 ## game loop
 gameloop = True
