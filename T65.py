@@ -3,7 +3,6 @@ Name:    T-65 X-Wing Fighter Sound Simulator
 Purpose: Kickass Xmas gift for my son James
 Works with pyhton3.4 and python2.7
 Thanks to Prasaanth for the help! :-)
-From GIT Repository... edited on VM!
 """
 
 #the next line is only needed for python2.x and not necessary for python3.x
@@ -24,12 +23,16 @@ from threading import Thread
 # Initiate Global Flags & States
 timer_dict = dict() #these are global same level as import
 timeElapsed = 0 #used for random delays
-key_on = False
+master_lock_on = False
+aux_power_on = False
 main_power_on = False
 engine_started = False
 weapon_selected = 1
 foil_position_closed = True
-gpio_27_flag = False
+
+gpio_27_flag = False # remove later, just for GPIO Tests & Sample
+
+
 
 
 # Initiate display window, required to collect key board input
@@ -70,13 +73,16 @@ engine_sound = pygame.mixer.Sound('sounds/engine.wav')
 laser1_sound = pygame.mixer.Sound('sounds/laser1.wav')
 laser2_sound = pygame.mixer.Sound('sounds/laser2.wav')
 laser3_sound = pygame.mixer.Sound('sounds/laser3.wav')
+alarm_sound = pygame.mixer.Sound('sounds/alarm_02.wav')
 torpedo_sound = pygame.mixer.Sound('sounds/torpedo.wav')  #UPDATE WITH better TORPEDO SOUND FILE!!!!*****
 button_press_sound = pygame.mixer.Sound('sounds/button_press.wav')  # good sound but make it a bit quieter
 button_press_sound.set_volume(.2) 
 error_sound = pygame.mixer.Sound('sounds/error.wav')  
 microphone_on_sound = pygame.mixer.Sound('sounds/mic_static.wav')  #UPDATE WITH Microphone static SOUND FILE!!!!*****
 hyperdrive_sound = pygame.mixer.Sound('sounds/hyperdrive.wav')  
-start_engine_sound = pygame.mixer.Sound('sounds/startengine.wav') 
+start_engine_sound = pygame.mixer.Sound('sounds/startengine.wav')
+aux_power_sound = pygame.mixer.Sound('sounds/aux_power.wav')  #**********************  NEED WAV verion, grabbed MP3 instead.
+engine_shutdown_sound = pygame.mixer.Sound('sounds/engine_shutdown.wav')
 xwing_turn_sound = pygame.mixer.Sound('sounds/xwing_turn.wav') 
 xwing_turn_sound.set_volume(.3)
 #failed_start_engine_sound = # Add randomly failed starts!
@@ -84,27 +90,29 @@ foil_sound = pygame.mixer.Sound('sounds/foil.wav')  #UPDATE WITH BETTER FOIL SOU
 
 # load groups of sound files
 r2_sound_files = glob.glob("sounds/r2d2_*.wav")
+chewy_sound_files = glob.glob("sounds/Star_Wars_Soundboard_chew*.wav")
 radio_sound_files = glob.glob("sounds/radio_*.wav")
-yoda_sound_files = glob.glob("sounds/yoda_*.wav")
+yoda_sound_files = glob.glob("sounds/Star_Wars_Soundboard_yod*.wav")
+tie_fighter_sound_files = glob.glob("sounds/Star_Wars_Soundboard_xwtie*.wav")
 
 #Configure Channels for Sound that can't overlap, share some of the same channels, if no chance of overlap
 #************* FIX - come back and reserve these channels using pygame.mixer.set_reserved
-pygame.mixer.set_num_channels(12) # default is 8
+pygame.mixer.set_num_channels(14) # default is 8
 engine_channel = pygame.mixer.Channel(1) 
 pygame.mixer.set_reserved(1)
 r2_channel = pygame.mixer.Channel(2) 
 radio_channel = pygame.mixer.Channel(3)
-yoda_channel = pygame.mixer.Channel(4)
-hyperdrive_channel = pygame.mixer.Channel(5) 
-start_engine_channel = pygame.mixer.Channel(6) 
-foil_channel = pygame.mixer.Channel(7) 
-
-
+tie_fighter_channel = pygame.mixer.Channel(4)
+yoda_channel = pygame.mixer.Channel(5)
+chewy_channel = pygame.mixer.Channel(6)
+hyperdrive_channel = pygame.mixer.Channel(7) 
+start_engine_channel = pygame.mixer.Channel(8) 
+foil_channel = pygame.mixer.Channel(9) 
 
 #define GPIO Pin assignment
 shared_led_power_gpio_pin = 2
-lock_gpio_pin = 3
-ignition_gpio_pin = 4
+master_lock_gpio_pin = 3
+aux_power_gpio_pin = 4
 engine_start_gpio_pin = 5
 engine_start_led_gpio_pin = 6
 foil_gpio_pin = 7
@@ -143,6 +151,13 @@ if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' f
 
     GPIO.add_event_detect(22, GPIO.RISING, callback=my_callback, bouncetime=400)  #SAMPLE ON RISE EVENT CALL my_callback
     GPIO.add_event_detect(17, GPIO.RISING, callback=my_callback2, bouncetime=400) #SAMPLE ON RISE EVENT CALL my_callback2
+
+    GPIO.add_event_detect(master_lock_gpio_pin, GPIO.RISING, callback=un_lock, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Locking or Unlocking************
+    GPIO.add_event_detect(aux_power_gpio_pin, GPIO.RISING, callback=un_lock, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+
+    master_lock_on = GPI.input(master_lock_gpio_pin)
+    aux_power_on = GPI.input(aux_power_gpio_pin)
+
 
 else:
     running_on_pi = False
@@ -184,6 +199,7 @@ class LedThread(Thread):
         super(LedThread, self).__init__()
         self._keepgoing = True
         self._flashLED = False
+	self._list_of_pins =  []
 
     def run(self):
         print("LedThread is running")
@@ -197,12 +213,23 @@ class LedThread(Thread):
     def stopflash(self):
         self._flashLED = False
         GPIO.output(27, False)
-
         print("LEDThread-stopflash called")
 
     def startflash(self):
         self._flashLED = True
         print("LEDThread-flash called")
+
+    def add_to_list(self,element):
+	self._list_of_pins.insert(0, element)
+	print("my thread list contains", self._list_of_pins)
+
+    def print_list(self):
+	for x in self._list_of_pins:
+	    print(x)
+    
+    def remove_from_list(self,element):
+	self._list_of_pins.remove(element)
+	print("after remove, my list contains", self._list_of_pins)
 
     def kill(self):
         self._keepgoing = False
@@ -211,15 +238,47 @@ class LedThread(Thread):
 
 mythread = LedThread()  # this needs to be initialized... not sure where
 mythread.start()
+mythread.add_to_list(21)
+mythread.add_to_list(22)
+mythread.print_list()
+mythread.remove_from_list(22)
+mythread.print_list()
+
+
+
 ################################ END OF FLASHY LIGHT SAMPLE CODE ############################
 
 
 
-#def turn_on_main_power():
-#    global main_power_on
-#
-#    if key_on:
-#	main_power_on
+
+def unlock():
+    global master_key_on
+    master_key_on = True
+    print("Master key is ON")
+
+def lock():
+    global master_key_off
+    master_key_on = False
+    print("Master key is OFF")
+    for key in timer_dict: #stop all timers
+        timer_task = timer_dict[key]
+        timer_task.cancel()
+    pygame.mixer.stop()  #stop all sound
+    stop_engine()
+
+def turn_aux_power_on():
+    global aux_power_on
+    if not aux_power_on:	
+        if not start_engine_channel.get_busy():
+            start_engine_channel.play(aux_power_sound)
+        aux_power_on = True
+
+
+def turn_aux_power_off():
+    global aux_power_on
+    aux_power_off = False
+
+
 
 def start_engine():
     global engine_started
@@ -250,6 +309,14 @@ def start_engine():
 # initialize music & volume - need to preload with all music
 #	    pygame.mixer.music.set_volume(.25)
 #	    pygame.mixer.music.play(-1, fade_ms=9000)  # -1 parameter makes it loop non-stop
+
+def stop_engine():
+    global engine_started
+
+    if engine_started: #only stop if already started
+        start_engine_channel.play(engine_shutdown_sound)
+        engine_started = False
+   
 
 def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays Between
 
@@ -315,36 +382,72 @@ def play_radio():
             radiosound1 = pygame.mixer.Sound(soundwav)
             radio_channel.play(radiosound1)
 
-def play_yoda_with_random_delays():   #Play random yoda Sounds, with Random Delays Between
-    # Need this here to say that we want to modify the global copy
-    global timer_dict
-    global timeElapsed
-
-    play_yoda() #calls function to play Random radio sounds
-    # Calculate Delay
-    delay = randint(1,3);
-    timeElapsed += delay
-    print(': play_yoda_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
-
-    # Create New Timer Task
-    timer_task = Timer(delay, play_radio_with_random_delays, ())
-    timer_dict['RANDOM_yoda_SOUNDS_TIMER'] = timer_task  #name of timer instance (could radioRandomSounds)
-
-    # Start Timer Task
-    timer_task.start()
-
-def stop_yoda_with_random_delays(): #turn off Random radio sounds
-    timer_task = timer_dict['RANDOM_yoda_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right timer_dict for the timer you are using...
-    timer_task.cancel()
-
 def play_yoda():
     print('play_yoda function entered.')
     if engine_started:	
-        if not yoda_channel.get_busy():
+	if not yoda_channel.get_busy():  
             print("not busy")
             soundwav = random.choice(yoda_sound_files)
             yodasound1 = pygame.mixer.Sound(soundwav)
             yoda_channel.play(yodasound1)
+		
+def start_enemy_fighters():
+    print('start_enemy_fighters function entered')
+    if engine_started:
+        if not tie_fighter_channel.get_busy():
+            print('not busy')
+	    tie_fighter_channel.play(alarm_sound)
+   
+            # Create New Timer Task
+    	    timer_task = Timer(5, play_tie_fighter_with_random_delays, ())
+            timer_dict['tie_fighter_alarm_TIMER'] = timer_task  
+	    print('start timer after alarm')            
+
+            # Start Timer Task
+            timer_task.start()         
+	    
+def stop_enemy_fighters():
+    if tie_fighter_channel.get_busy():
+	tie_fighter_channel.stop()
+    timer_task = timer_dict['tie_fighter_alarm_TIMER']  
+    timer_task.cancel()
+    
+    print('stop_enemy_fighters funtion')
+    stop_tie_fighter_with_random_delays()
+
+def play_tie_fighter_with_random_delays():   #Play random Tie Fighter Sounds, with Random Delays Between
+    # Need this here to say that we want to modify the global copy
+    global timer_dict
+    global timeElapsed
+
+    play_tie_fighter() #calls function to play Random tighter fighter sounds
+    # Calculate Delay
+    delay = randint(1,3);
+    timeElapsed += delay
+    print(': play_tie_fighter_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
+
+    # Create New Timer Task
+    timer_task = Timer(delay, play_tie_fighter_with_random_delays, ())
+    timer_dict['RANDOM_tie_fighter_SOUNDS_TIMER'] = timer_task  
+
+    # Start Timer Task
+    timer_task.start()
+
+def stop_tie_fighter_with_random_delays(): #turn off Random tie fighter sounds
+    key='RANDOM_tie_fighter_SOUNDS_TIMER'
+    if key in timer_dict and timer_dict[key]:   #make sure key exists & that it has a value ******************** ADD THIS CODE TO ALL TIMER CANCEL CODE ****
+        timer_task = timer_dict[key]
+        timer_task.cancel()
+
+def play_tie_fighter():
+    print('play_tie_fighter function entered.')
+    if engine_started:	
+        if not tie_fighter_channel.get_busy():
+            print("not busy")
+            soundwav = random.choice(tie_fighter_sound_files)
+            sound1 = pygame.mixer.Sound(soundwav)
+            tie_fighter_channel.play(sound1)
+
 
 def engage_hyperdrive():
     print('engage_hyperdrive function entered.')
@@ -398,12 +501,28 @@ def turn_on_microphone():
         print('microphone on')
         microphone_on_sound.play()
 
+def play_alarm():
+    if engine_started:
+        print('function play alarm')
+        alarm_sound.play()
+
+
+
 def turn_off_microphone():
     if engine_started:
         print('microphone off')  #consider doing this on a channel so it can't repeat
         #consider adding static sound before R2 replies... may need to wait till sound is done to play R2
         microphone_on_sound.play()
         play_r2()
+
+def play_chewy():
+    print('play_chewy function entered.')
+    if engine_started:	
+	if not chewy_channel.get_busy():  
+            print("not busy")
+       	    soundwav = random.choice(chewy_sound_files)
+            chewysound1 = pygame.mixer.Sound(soundwav)
+            chewy_channel.play(chewysound1)
 
 def play_hat():
     if engine_started:
@@ -427,6 +546,30 @@ def read_joystick_and_keyboard():
             if event.key == pygame.K_s:
                 print("Key s down")
                 start_engine()
+            if event.key == pygame.K_F1:
+                print("Key F1 down")
+		play_yoda()
+            if event.key == pygame.K_F2:
+                print("Key F2 down")
+                play_chewy()
+            if event.key == pygame.K_F3:
+                print("Key F3 down")
+                turn_on_microphone()
+            if event.key == pygame.K_F4:
+                print("Key F4 down")
+                turn_off_microphone()
+            if event.key == pygame.K_F5:
+                print("Key F5 down")
+                play_r2()
+            if event.key == pygame.K_F6:
+                print("Key F6 down")
+                error_sound.play()
+            if event.key == pygame.K_F7:
+                print("Key F7 down")
+                error_sound.play()
+            if event.key == pygame.K_F8:
+                print("Key F8 down")
+                error_sound.play()
             elif event.key == pygame.K_1:
                 print("Key 1 down")
                 select_weapon(1)
@@ -442,9 +585,21 @@ def read_joystick_and_keyboard():
             elif event.key == pygame.K_r:
                 print("Key r down")
                 play_r2_with_random_delays()
-            elif event.key == pygame.K_y:
-                print("Key y down")
-                play_yoda_with_random_delays()
+            elif event.key == pygame.K_t:
+                print("Key t down")
+		start_enemy_fighters()
+            elif event.key == pygame.K_k:
+                print("Key k down")
+		unlock()
+            elif event.key == pygame.K_l:
+                print("Key t down")
+		lock() 
+            elif event.key == pygame.K_i:
+                print("Key i down")
+		turn_aux_power_on()
+            elif event.key == pygame.K_o:
+                print("Key o down")
+		turn_aux_power_off()                 
             elif event.key == pygame.K_a:
                 print("Key a down")
                 play_radio_with_random_delays()
@@ -462,16 +617,17 @@ def read_joystick_and_keyboard():
                     close_foil()
             elif event.key == pygame.K_q:
                 pygame.quit()
-                mythread.kill()
+                mythread.kill() # this causes an error on x86 because no GPIO 
                 sys.exit()
         if event.type == pygame.KEYUP:
             print("keyboard KEYUP")
             if event.key == pygame.K_r:
                 print("Key r up")
                 stop_r2_with_random_delays()
-            if event.key == pygame.K_y:
-                print("Key y up")
-                stop_yoda_with_random_delays()
+            if event.key == pygame.K_t:
+                print("Key t up")
+		stop_enemy_fighters()
+                #stop_tie_fighter_with_random_delays()  #************** FIX THIS, CAN"T STOP IT IF IT HASN"T STARTED, IE ALARM BEFORE RANDOM SOUNDS START DURING DELAY.... 
             if event.key == pygame.K_a:
                 print("Key a up")
                 stop_radio_with_random_delays()
@@ -536,9 +692,8 @@ def read_joystick_and_keyboard():
                 print("event value axis 3: {}".format(event.value))
                 #convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
                 engine_volume = ((1+(-1 * event.value)) * .5)
-                pygame.mixer.music.set_volume(engine_volume)
-                engine_volume = event.value
-                print(engine_volume)
+                engine_sound.set_volume(engine_volume)
+                print("engine volume:".format(engine_volume))
               #self.verticalPosition = event.value
 
 
@@ -551,6 +706,10 @@ if __name__ == '__main__':
     # Print BEGIN PROGRAM Statement
     print('MAKE SURE LITTLE WINDOW HAS FOCUS FOR KEYBOARD KEYS ENTRY TO WORK')
     print('Press q to quit')
+    print('Press k for key to unlock')
+    print('Press l for key to lock')
+    print('Press i for auxilary power on')
+    print('Press o for auxilary power off')
     print('Press s to start engine')
     print('Press 1 to select  laser1')
     print('Press 2 to select laser2')
@@ -560,6 +719,10 @@ if __name__ == '__main__':
     print('Press h for hyperdrive')
     print('Press f to open & close foil')
     print('Press & hold r for R2 Radio')
+    print('Press & hold a for Alliance Radio')
+    print('Press & hold t for R2 Radio')
+    print('Press F1 to hear Yoda')
+    print('Press F2 to hear Chewy')
 
     while gameloop:
         read_joystick_and_keyboard()
