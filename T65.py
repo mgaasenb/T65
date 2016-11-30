@@ -28,6 +28,7 @@ master_lock_on = False
 aux_power_on = False
 main_power_on = False
 engine_started = False
+landing_gear_open = True
 weapon_selected = 1
 foil_position_closed = True
 
@@ -79,12 +80,14 @@ error_sound = pygame.mixer.Sound('sounds/error.wav')
 microphone_on_sound = pygame.mixer.Sound('sounds/mic_static.wav')  
 hyperdrive_sound = pygame.mixer.Sound('sounds/hyperdrive.wav')  
 start_engine_sound = pygame.mixer.Sound('sounds/startengine.wav')
-aux_power_sound = pygame.mixer.Sound('sounds/error_wav.wav')  #**********************get aux power on & off NEED WAV verion, grabbed MP3 instead.
+aux_power_on_sound = pygame.mixer.Sound('sounds/error_wav.wav')  #**********************get aux power on & off NEED WAV verion, grabbed MP3 instead.
+aux_power_off_sound = pygame.mixer.Sound('sounds/button_press.wav') #******************** updates with aux off sound ******************
 engine_shutdown_sound = pygame.mixer.Sound('sounds/engine_shutdown.wav')
 xwing_turn_sound = pygame.mixer.Sound('sounds/xwing_turn.wav') 
 xwing_turn_sound.set_volume(.3)
 #failed_start_engine_sound = # Add randomly failed starts!
 foil_sound = pygame.mixer.Sound('sounds/foil.wav')  #UPDATE WITH BETTER FOIL SOUND or make louder ???*****
+landing_gear_sound = pygame.mixer.Sound('sounds/foil.wav')  #UPDATE WITH LANDING GEAR SOUND
 
 # load groups of sound files
 r2_sound_files = glob.glob("sounds/r2d2_*.wav")
@@ -96,7 +99,8 @@ tie_fighter_sound_files = glob.glob("sounds/Star_Wars_Soundboard_xwtie*.wav")
 #Configure Channels for Sound that can't overlap, share some of the same channels, if no chance of overlap
 #************* FIX - come back and reserve these channels using pygame.mixer.set_reserved
 pygame.mixer.set_num_channels(14) # default is 8
-engine_channel = pygame.mixer.Channel(1) 
+start_engine_channel = pygame.mixer.Channel(8)
+engine_channel = pygame.mixer.Channel(1)
 pygame.mixer.set_reserved(1)
 r2_channel = pygame.mixer.Channel(2) 
 radio_channel = pygame.mixer.Channel(3)
@@ -104,8 +108,8 @@ tie_fighter_channel = pygame.mixer.Channel(4)
 yoda_channel = pygame.mixer.Channel(5)
 chewy_channel = pygame.mixer.Channel(6)
 hyperdrive_channel = pygame.mixer.Channel(7) 
-start_engine_channel = pygame.mixer.Channel(8) 
-foil_channel = pygame.mixer.Channel(9) 
+foil_channel = pygame.mixer.Channel(9)
+
 
 #define GPIO Pin assignment
 shared_led_power_gpio_pin = 2
@@ -149,14 +153,15 @@ if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' f
 
     GPIO.add_event_detect(22, GPIO.RISING, callback=my_callback, bouncetime=400)  #SAMPLE ON RISE EVENT CALL my_callback
     GPIO.add_event_detect(17, GPIO.RISING, callback=my_callback2, bouncetime=400) #SAMPLE ON RISE EVENT CALL my_callback2
+# Enable Event Handling for GPIO Input Pins - ie. switches & buttons
+    GPIO.add_event_detect(master_lock_gpio_pin, GPIO.RISING, callback=lock_change, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Locking or Unlocking************
+    GPIO.add_event_detect(aux_power_gpio_pin, GPIO.RISING, callback=aux_power_change, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    GPIO.add_event_detect(landing_gear_gpio_pin, GPIO.RISING, callback=landing_gear_change, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
 
-    GPIO.add_event_detect(master_lock_gpio_pin, GPIO.RISING, callback=un_lock, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Locking or Unlocking************
-    GPIO.add_event_detect(aux_power_gpio_pin, GPIO.RISING, callback=un_lock, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
-
+# Get initial settings and set flags
     master_lock_on = GPI.input(master_lock_gpio_pin)
     aux_power_on = GPI.input(aux_power_gpio_pin)
-
-
+    landing_gear_open = GPI.input(master_lock_gpio_pin)
 else:
     running_on_pi = False
 
@@ -197,7 +202,7 @@ class LedThread(Thread):
         super(LedThread, self).__init__()
         self._keepgoing = True
         self._flashLED = False
-	self._list_of_pins =  []
+        self._list_of_pins =  []
 
     def run(self):
         print("LedThread is running")
@@ -218,16 +223,16 @@ class LedThread(Thread):
         print("LEDThread-flash called")
 
     def add_to_list(self,element):
-	self._list_of_pins.insert(0, element)
-	print("my thread list contains", self._list_of_pins)
+    self._list_of_pins.insert(0, element)
+    print("my thread list contains", self._list_of_pins)
 
     def print_list(self):
-	for x in self._list_of_pins:
-	    print(x)
+    for x in self._list_of_pins:
+        print(x)
     
     def remove_from_list(self,element):
-	self._list_of_pins.remove(element)
-	print("after remove, my list contains", self._list_of_pins)
+    self._list_of_pins.remove(element)
+    print("after remove, my list contains", self._list_of_pins)
 
     def kill(self):
         self._keepgoing = False
@@ -241,77 +246,100 @@ mythread.add_to_list(22)
 mythread.print_list()
 mythread.remove_from_list(22)
 mythread.print_list()
-
-
-
 ################################ END OF FLASHY LIGHT SAMPLE CODE ############################
-
-
-
 
 def unlock():
     global master_key_on
+
     master_key_on = True
     print("Master key is ON")
     #check if aux power switch is on position, if so turn on aux_power
-    if aux_power_on = True:
-        turn_
-	
+    if  GPI.input(aux_power_gpio_pin): #Aux on
+        print("Aux switch is in on position, call aux_power_on func")
+        turn_aux_power_on()
 
 def lock():
-    global master_key_off
+    global master_key_on
+
     master_key_on = False
     print("Master key is OFF")
     for key in aux_mode__timer_dict: #stop all timers
-	print(key)        
-	timer_task = aux_mode__timer_dict[key]
+        print(key)
+        timer_task = aux_mode__timer_dict[key]
         timer_task.cancel()
     pygame.mixer.stop()  #stop all sound
-    stop_engine()
+    # CHECK IF STARTED IF SO>>> PLAY STOP ENGINE SOUND, OTHERWISE< CHECK IF aux on... etc
+    if engine_started:
+        stop_engine()
+    elif aux_power_on:
+        turn_aux_power_off()
 
 def turn_aux_power_on():
     global aux_power_on
+    print("aux_power_on function entered")
     if not aux_power_on:	
         if not start_engine_channel.get_busy():
-            start_engine_channel.play(aux_power_sound)
+            start_engine_channel.play(aux_power_on_sound)
         aux_power_on = True
+        sound_length = aux_power_on_sound.get_length()
+        timer_task = Timer(sound_length, aux_power_switch_check, ())  # wait till aux on sound is done, then check switches & start the appropriate sounds
+        aux_mode__timer_dict['aux_power_on_TIMER'] = timer_task
+        timer_task.start()  #Start timer
 
+def aux_power_switch_check(): #called from turn_aux_power_on, check switches & turns on appropriate actions
+
+    if  GPI.input(r2_radio_gpio_pin): #R2 on
+        print("r2 radio is in on position, call start random r2")
+        play_r2_with_random_delays()
+    if  GPI.input(alliance_radio_gpio_pin): #radio is on
+        print("alliance radio is in on position, call start random radio")
+        play_radio_with_random_delays()
+    if  GPI.input(arm_weapons_gpio_pin): #R2 on
+        print("weapons are in armed position, call arm weapons")
+        play_r2_with_random_delays()
 
 def turn_aux_power_off():
     global aux_power_on
-    aux_power_off = False
-
+    print("aux_power_off")
+    for key in aux_mode__timer_dict: #stop all timers
+        timer_task = aux_mode__timer_dict[key]
+        timer_task.cancel()
+    pygame.mixer.stop()  #stop all sound
+    # if Engine started, play stop engine sound
+    if engine_started:
+        Print("engine was started, so call stop engine")
+        stop_engine()
+    elif:
+        Print("engine wasn't started so play aux_power_off sound")
+        #***********add check if channel busy?)
+        start_engine_channel.play(aux_power_off_sound)
+    aux_power_on = False
 
 
 def start_engine():
     global engine_started
 #    global stick
 
-    if not engine_started:	
+    if not engine_started and master_lock_on:
         if not start_engine_channel.get_busy():
             start_engine_channel.play(start_engine_sound, maxtime=4500)
-        engine_started = True
-        #while start_engine_channel.get_busy(): #wait until engine start sound is complete
-        #    do_nothing = True
-        # Play music non-stop
 
-## NEED TO FIX TO HANDLE SCENARIO WHERE JOYSTICK NOT CONNECTED 
-#       pygame.event.pump()
-#       throttle_position = stick.get_axis(3)  # get the current position of an axis
-#	    print ('this is the throttle position')
-#	    print (throttle_position)
-#	    print ("throttle setting".format(throttle_position))
-##     convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
-#       engine_volume = ((1+(-1 * throttle_position)) * .5)
-#       print ("setting volume initially to ".format(engine_volume))
-#       print ("setting volume initially to ".format(engine_volume))
-#       engine_sound.set_volume(engine_volume)
-        engine_sound.set_volume(.25)  # USE THIS SETTING IF NO THROTTLE JOY STICK BUT NOT IF GETTING AXIS VALUE FROM JOYSTICK
+        set_engine_volume()
         engine_sound.play(-1, fade_ms=7000)  # -1 parameter makes it loop non-stop
+        #*************************** set a timer that calls a function to set engeine_started = True instead of doing it here ******************
+        engine_started = True
 
-# initialize music & volume - need to preload with all music
-#	    pygame.mixer.music.set_volume(.25)
-#	    pygame.mixer.music.play(-1, fade_ms=9000)  # -1 parameter makes it loop non-stop
+def set_engine_volume():
+    if running_on_pi:  # ***************************Change This to check if Joystick is connected!!! ***************
+        pygame.event.pump()
+        throttle_position = stick.get_axis(3)  # get the current position of an axis
+        print ("throttle setting".format(throttle_position))
+        engine_volume = ((1+(-1 * throttle_position)) * .5) #convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
+        print ("setting volume to ".format(engine_volume))
+        engine_sound.set_volume(engine_volume)
+    else:
+    # engine_sound.set_volume(engine_volume)
+        engine_sound.set_volume(.25)
 
 def stop_engine():
     global engine_started
@@ -319,7 +347,14 @@ def stop_engine():
     if engine_started: #only stop if already started
         start_engine_channel.play(engine_shutdown_sound)
         engine_started = False
-   
+
+
+def play_music():
+# initialize music & volume - need to preload with all music
+    print('Play_Music function entered')
+#	    pygame.mixer.music.set_volume(.25)
+#	    pygame.mixer.music.play(-1, fade_ms=9000)  # -1 parameter makes it loop non-stop
+
 
 def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays Between
 
@@ -346,7 +381,7 @@ def stop_r2_with_random_delays(): #turn off Random R2 sounds
 
 def play_r2():
     print('play_r2 function entered.')
-    if engine_started:
+    if aux_power_on:
         if not r2_channel.get_busy():
             print("not busy")
             soundwav = random.choice(r2_sound_files)
@@ -378,7 +413,7 @@ def stop_radio_with_random_delays(): #turn off Random radio sounds
 
 def play_radio():
     print('play_radio function entered.')
-    if engine_started:	
+    if aux_power_on:
         if not radio_channel.get_busy():
             print("not busy")
             soundwav = random.choice(radio_sound_files)
@@ -387,8 +422,8 @@ def play_radio():
 
 def play_yoda():
     print('play_yoda function entered.')
-    if engine_started:	
-	if not yoda_channel.get_busy():  
+    if aux_power_on:
+    if not yoda_channel.get_busy():
             print("not busy")
             soundwav = random.choice(yoda_sound_files)
             yodasound1 = pygame.mixer.Sound(soundwav)
@@ -396,23 +431,20 @@ def play_yoda():
 		
 def start_enemy_fighters():
     print('start_enemy_fighters function entered')
-    if engine_started:
+    if aux_power_on:
         if not tie_fighter_channel.get_busy():
             print('not busy')
-	    tie_fighter_channel.play(alarm_sound)
-   
+            tie_fighter_channel.play(alarm_sound)
             # Create New Timer Task
     	    timer_task = Timer(5, play_tie_fighter_with_random_delays, ())
             aux_mode__timer_dict['tie_fighter_alarm_TIMER'] = timer_task  
-	    print('start timer after alarm')            
-
-            # Start Timer Task
-            timer_task.start()         
+            print('start timer after alarm')
+            timer_task.start()  # Start Timer Task
 	    
 def stop_enemy_fighters():
     if tie_fighter_channel.get_busy():
-	tie_fighter_channel.stop()
-    timer_task = aux_mode__timer_dict['tie_fighter_alarm_TIMER']  
+    tie_fighter_channel.stop()
+    timer_task = aux_mode__timer_dict['tie_fighter_alarm_TIMER']
     timer_task.cancel()
     
     print('stop_enemy_fighters funtion')
@@ -424,17 +456,13 @@ def play_tie_fighter_with_random_delays():   #Play random Tie Fighter Sounds, wi
     global timeElapsed
 
     play_tie_fighter() #calls function to play Random tighter fighter sounds
-    # Calculate Delay
-    delay = randint(1,3);
+    delay = randint(1,3);  # Calculate Delay
     timeElapsed += delay
     print(': play_tie_fighter_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
-
     # Create New Timer Task
     timer_task = Timer(delay, play_tie_fighter_with_random_delays, ())
     aux_mode__timer_dict['RANDOM_tie_fighter_SOUNDS_TIMER'] = timer_task  
-
-    # Start Timer Task
-    timer_task.start()
+    timer_task.start() # Start Timer Task
 
 def stop_tie_fighter_with_random_delays(): #turn off Random tie fighter sounds
     key='RANDOM_tie_fighter_SOUNDS_TIMER'
@@ -479,6 +507,23 @@ def close_foil():
             foil_channel.play(foil_sound)
         foil_position_closed = True
 
+def open_landing_gear():
+    global landing_gear_open
+
+    print('open_landing_gear function entered.')
+    if engine_started:
+        landing_gear_sound.play()
+    landing_gear_open = True
+
+def close_landing_gear():
+    global landing_gear_open
+
+    print('close_landing_gear function entered.')
+    if engine_started:
+        landing_gear_sound.play()
+    landing_gear_open = False
+
+
 def select_weapon(self):
     global weapon_selected
     
@@ -500,19 +545,17 @@ def fire_weapon():
             torpedo_sound.play()
 
 def turn_on_microphone():
-    if engine_started:
+    if aux_power_on:
         print('microphone on')
         microphone_on_sound.play()
 
 def play_alarm():
-    if engine_started:
+    if aux_power_on:
         print('function play alarm')
         alarm_sound.play()
 
-
-
 def turn_off_microphone():
-    if engine_started:
+    if aux_power_on:
         print('microphone off')  #consider doing this on a channel so it can't repeat
         #consider adding static sound before R2 replies... may need to wait till sound is done to play R2
         microphone_on_sound.play()
@@ -520,10 +563,10 @@ def turn_off_microphone():
 
 def play_chewy():
     print('play_chewy function entered.')
-    if engine_started:	
-	if not chewy_channel.get_busy():  
+    if aux_power_on:
+        if not chewy_channel.get_busy():
             print("not busy")
-       	    soundwav = random.choice(chewy_sound_files)
+            soundwav = random.choice(chewy_sound_files)
             chewysound1 = pygame.mixer.Sound(soundwav)
             chewy_channel.play(chewysound1)
 
@@ -551,7 +594,7 @@ def read_joystick_and_keyboard():
                 start_engine()
             if event.key == pygame.K_F1:
                 print("Key F1 down")
-		play_yoda()
+                play_yoda()
             if event.key == pygame.K_F2:
                 print("Key F2 down")
                 play_chewy()
@@ -590,22 +633,28 @@ def read_joystick_and_keyboard():
                 play_r2_with_random_delays()
             elif event.key == pygame.K_t:
                 print("Key t down")
-		start_enemy_fighters()
+                start_enemy_fighters()
             elif event.key == pygame.K_k:
                 print("Key k down")
-		unlock()
+                unlock()
             elif event.key == pygame.K_l:
-                print("Key t down")
-		lock() 
+                print("Key l down")
+                lock()
             elif event.key == pygame.K_i:
                 print("Key i down")
-		turn_aux_power_on()
+                turn_aux_power_on()
             elif event.key == pygame.K_o:
                 print("Key o down")
-		turn_aux_power_off()                 
+                turn_aux_power_off()
             elif event.key == pygame.K_a:
                 print("Key a down")
                 play_radio_with_random_delays()
+            elif event.key == pygame.K_g:
+                print("Key g down")
+                if landing_gear_open:
+                    close_landing_gear()
+                else:
+                    open_landing_gear()
             elif event.key == pygame.K_h:
                 print("Key h down")
                 engage_hyperdrive()
@@ -629,8 +678,7 @@ def read_joystick_and_keyboard():
                 stop_r2_with_random_delays()
             if event.key == pygame.K_t:
                 print("Key t up")
-		stop_enemy_fighters()
-                #stop_tie_fighter_with_random_delays()  #************** FIX THIS, CAN"T STOP IT IF IT HASN"T STARTED, IE ALARM BEFORE RANDOM SOUNDS START DURING DELAY.... 
+                stop_enemy_fighters()
             if event.key == pygame.K_a:
                 print("Key a up")
                 stop_radio_with_random_delays()
@@ -693,11 +741,8 @@ def read_joystick_and_keyboard():
                 print("event value axis 2: {}".format(event.value))
             elif event.axis == 3:
                 print("event value axis 3: {}".format(event.value))
-                #convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
-                engine_volume = ((1+(-1 * event.value)) * .5)
-                engine_sound.set_volume(engine_volume)
-                print("engine volume:".format(engine_volume))
-              #self.verticalPosition = event.value
+                set_engine_volume()
+                #self.verticalPosition = event.value
 
 
 ## game loop
