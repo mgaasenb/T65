@@ -21,7 +21,8 @@ from threading import Thread
 
 
 # Initiate Global Flags & States
-timer_dict = dict() #these are global same level as import
+aux_mode_timer_dict = dict() 
+power_mode_timer_dict = dict() 
 timeElapsed = 0 #used for random delays
 master_lock_on = False
 aux_power_on = False
@@ -31,8 +32,6 @@ weapon_selected = 1
 foil_position_closed = True
 
 gpio_27_flag = False # remove later, just for GPIO Tests & Sample
-
-
 
 
 # Initiate display window, required to collect key board input
@@ -45,7 +44,6 @@ game_display.fill((0,0,0))
 
 # initiate sound mixer
 pygame.mixer.pre_init(44100, -16, 2, 2048) # setup mixer to avoid sound lag (try reducing/increasing last number default is 3072)
-#pygame.mixer.pre_init(44100, -16, 2, 64) # testing even smaller buffer
 
 pygame.mixer.init()                        #************ Figure out if I need both the mixer.init & the  .init in the next line, also does the second once cancel my pre-init settings
 pygame.init()                              #initialize pygame
@@ -74,14 +72,14 @@ laser1_sound = pygame.mixer.Sound('sounds/laser1.wav')
 laser2_sound = pygame.mixer.Sound('sounds/laser2.wav')
 laser3_sound = pygame.mixer.Sound('sounds/laser3.wav')
 alarm_sound = pygame.mixer.Sound('sounds/alarm_02.wav')
-torpedo_sound = pygame.mixer.Sound('sounds/torpedo.wav')  #UPDATE WITH better TORPEDO SOUND FILE!!!!*****
-button_press_sound = pygame.mixer.Sound('sounds/button_press.wav')  # good sound but make it a bit quieter
+torpedo_sound = pygame.mixer.Sound('sounds/torpedo.wav') 
+button_press_sound = pygame.mixer.Sound('sounds/button_press.wav') 
 button_press_sound.set_volume(.2) 
 error_sound = pygame.mixer.Sound('sounds/error.wav')  
-microphone_on_sound = pygame.mixer.Sound('sounds/mic_static.wav')  #UPDATE WITH Microphone static SOUND FILE!!!!*****
+microphone_on_sound = pygame.mixer.Sound('sounds/mic_static.wav')  
 hyperdrive_sound = pygame.mixer.Sound('sounds/hyperdrive.wav')  
 start_engine_sound = pygame.mixer.Sound('sounds/startengine.wav')
-aux_power_sound = pygame.mixer.Sound('sounds/aux_power.wav')  #**********************  NEED WAV verion, grabbed MP3 instead.
+aux_power_sound = pygame.mixer.Sound('sounds/error_wav.wav')  #**********************get aux power on & off NEED WAV verion, grabbed MP3 instead.
 engine_shutdown_sound = pygame.mixer.Sound('sounds/engine_shutdown.wav')
 xwing_turn_sound = pygame.mixer.Sound('sounds/xwing_turn.wav') 
 xwing_turn_sound.set_volume(.3)
@@ -255,13 +253,18 @@ def unlock():
     global master_key_on
     master_key_on = True
     print("Master key is ON")
+    #check if aux power switch is on position, if so turn on aux_power
+    if aux_power_on = True:
+        turn_
+	
 
 def lock():
     global master_key_off
     master_key_on = False
     print("Master key is OFF")
-    for key in timer_dict: #stop all timers
-        timer_task = timer_dict[key]
+    for key in aux_mode__timer_dict: #stop all timers
+	print(key)        
+	timer_task = aux_mode__timer_dict[key]
         timer_task.cancel()
     pygame.mixer.stop()  #stop all sound
     stop_engine()
@@ -321,7 +324,7 @@ def stop_engine():
 def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays Between
 
     # Need this here to say that we want to modify the global copy
-    global timer_dict
+    global aux_mode__timer_dict
     global timeElapsed
 
     play_r2() #calls function to play Random R2 sounds
@@ -332,13 +335,13 @@ def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays B
 
     # Create New Timer Task
     timer_task = Timer(delay, play_r2_with_random_delays, ())
-    timer_dict['RANDOM_R2_SOUNDS_TIMER'] = timer_task  #name of timer instance (could r2RandomSounds)
+    aux_mode__timer_dict['RANDOM_R2_SOUNDS_TIMER'] = timer_task  #name of timer instance (could r2RandomSounds)
 
     # Start Timer Task
     timer_task.start()
 
 def stop_r2_with_random_delays(): #turn off Random R2 sounds
-    timer_task = timer_dict['RANDOM_R2_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right timer_dict for the timer you are using...
+    timer_task = aux_mode__timer_dict['RANDOM_R2_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right aux_mode__timer_dict for the timer you are using...
     timer_task.cancel()
 
 def play_r2():
@@ -353,7 +356,7 @@ def play_r2():
 def play_radio_with_random_delays():   #Play random radio Sounds, with Random Delays Between
 
     # Need this here to say that we want to modify the global copy
-    global timer_dict
+    global aux_mode__timer_dict
     global timeElapsed
 
     play_radio() #calls function to play Random radio sounds
@@ -364,13 +367,13 @@ def play_radio_with_random_delays():   #Play random radio Sounds, with Random De
 
     # Create New Timer Task
     timer_task = Timer(delay, play_radio_with_random_delays, ())
-    timer_dict['RANDOM_radio_SOUNDS_TIMER'] = timer_task  #name of timer instance (could radioRandomSounds)
+    aux_mode__timer_dict['RANDOM_radio_SOUNDS_TIMER'] = timer_task  #name of timer instance (could radioRandomSounds)
 
     # Start Timer Task
     timer_task.start()
 
 def stop_radio_with_random_delays(): #turn off Random radio sounds
-    timer_task = timer_dict['RANDOM_radio_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right timer_dict for the timer you are using...
+    timer_task = aux_mode__timer_dict['RANDOM_radio_SOUNDS_TIMER']  # use this & next line on button UP/Off cancel reference the right aux_mode__timer_dict for the timer you are using...
     timer_task.cancel()
 
 def play_radio():
@@ -400,7 +403,7 @@ def start_enemy_fighters():
    
             # Create New Timer Task
     	    timer_task = Timer(5, play_tie_fighter_with_random_delays, ())
-            timer_dict['tie_fighter_alarm_TIMER'] = timer_task  
+            aux_mode__timer_dict['tie_fighter_alarm_TIMER'] = timer_task  
 	    print('start timer after alarm')            
 
             # Start Timer Task
@@ -409,7 +412,7 @@ def start_enemy_fighters():
 def stop_enemy_fighters():
     if tie_fighter_channel.get_busy():
 	tie_fighter_channel.stop()
-    timer_task = timer_dict['tie_fighter_alarm_TIMER']  
+    timer_task = aux_mode__timer_dict['tie_fighter_alarm_TIMER']  
     timer_task.cancel()
     
     print('stop_enemy_fighters funtion')
@@ -417,7 +420,7 @@ def stop_enemy_fighters():
 
 def play_tie_fighter_with_random_delays():   #Play random Tie Fighter Sounds, with Random Delays Between
     # Need this here to say that we want to modify the global copy
-    global timer_dict
+    global aux_mode__timer_dict
     global timeElapsed
 
     play_tie_fighter() #calls function to play Random tighter fighter sounds
@@ -428,15 +431,15 @@ def play_tie_fighter_with_random_delays():   #Play random Tie Fighter Sounds, wi
 
     # Create New Timer Task
     timer_task = Timer(delay, play_tie_fighter_with_random_delays, ())
-    timer_dict['RANDOM_tie_fighter_SOUNDS_TIMER'] = timer_task  
+    aux_mode__timer_dict['RANDOM_tie_fighter_SOUNDS_TIMER'] = timer_task  
 
     # Start Timer Task
     timer_task.start()
 
 def stop_tie_fighter_with_random_delays(): #turn off Random tie fighter sounds
     key='RANDOM_tie_fighter_SOUNDS_TIMER'
-    if key in timer_dict and timer_dict[key]:   #make sure key exists & that it has a value ******************** ADD THIS CODE TO ALL TIMER CANCEL CODE ****
-        timer_task = timer_dict[key]
+    if key in aux_mode__timer_dict and aux_mode__timer_dict[key]:   #make sure key exists & that it has a value ******************** ADD THIS CODE TO ALL TIMER CANCEL CODE ****
+        timer_task = aux_mode__timer_dict[key]
         timer_task.cancel()
 
 def play_tie_fighter():
@@ -701,7 +704,7 @@ def read_joystick_and_keyboard():
 gameloop = True
 if __name__ == '__main__':
     # Need this here to say that we want to modify the global copy
-    global timer_dict
+    global aux_mode__timer_dict
 
     # Print BEGIN PROGRAM Statement
     print('MAKE SURE LITTLE WINDOW HAS FOCUS FOR KEYBOARD KEYS ENTRY TO WORK')
