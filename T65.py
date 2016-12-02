@@ -28,7 +28,8 @@ master_lock_on = False
 aux_power_on = False
 main_power_on = False
 engine_started = False
-landing_gear_open = True
+weapons_armed = False
+landing_gear_down = True
 weapon_selected = 1
 foil_position_closed = True
 
@@ -75,11 +76,13 @@ engine_sound = pygame.mixer.Sound('sounds/engine.wav')
 laser1_sound = pygame.mixer.Sound('sounds/laser1.wav')
 laser2_sound = pygame.mixer.Sound('sounds/laser2.wav')
 laser3_sound = pygame.mixer.Sound('sounds/laser3.wav')
+weapons_armed_sound = pygame.mixer.Sound('sounds/weapons_armed.wav')
 alarm_sound = pygame.mixer.Sound('sounds/alarm_02.wav')
 torpedo_sound = pygame.mixer.Sound('sounds/torpedo.wav') 
 button_press_sound = pygame.mixer.Sound('sounds/button_press.wav') 
-button_press_sound.set_volume(.2) 
-error_sound = pygame.mixer.Sound('sounds/error.wav')  
+button_press_sound.set_volume(.2)
+acknowledge_sound = pygame.mixer.Sound('sounds/acknowledge.wav')
+error_sound = pygame.mixer.Sound('sounds/error.wav')
 microphone_on_sound = pygame.mixer.Sound('sounds/mic_static.wav')  
 hyperdrive_sound = pygame.mixer.Sound('sounds/hyperdrive.wav')  
 start_engine_sound = pygame.mixer.Sound('sounds/startengine.wav')
@@ -159,13 +162,21 @@ if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' f
     GPIO.add_event_detect(17, GPIO.RISING, callback=my_callback2, bouncetime=400) #SAMPLE ON RISE EVENT CALL my_callback2
 # Enable Event Handling for GPIO Input Pins - ie. switches & buttons
     GPIO.add_event_detect(master_lock_gpio_pin, GPIO.RISING, callback=lock_change, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Locking or Unlocking************
-    GPIO.add_event_detect(aux_power_gpio_pin, GPIO.RISING, callback=aux_power_change, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
-    GPIO.add_event_detect(landing_gear_gpio_pin, GPIO.RISING, callback=landing_gear_change, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    GPIO.add_event_detect(master_lock_gpio_pin, GPIO.FALLING, callback=lock_change, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Locking or Unlocking************
+    GPIO.add_event_detect(aux_power_gpio_pin, GPIO.RISING, callback=turn_aux_power_on, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    GPIO.add_event_detect(aux_power_gpio_pin, GPIO.FALLING, callback=turn_aux_power_off, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    GPIO.add_event_detect(landing_gear_gpio_pin, GPIO.RISING, callback=lower_landing_gear, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    GPIO.add_event_detect(landing_gear_gpio_pin, GPIO.FALLING, callback=raise_landing_gear, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    GPIO.add_event_detect(arm_weapons_gpio_pin, GPIO.RISING, callback=arm_weapons(), bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    GPIO.add_event_detect(arm_weapons_gpio_pin, GPIO.FALLING, callback=disarm_weapons(), bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+
 
 # Get initial settings and set flags
     master_lock_on = GPI.input(master_lock_gpio_pin)
     aux_power_on = GPI.input(aux_power_gpio_pin)
-    landing_gear_open = GPI.input(master_lock_gpio_pin)
+    foil_position_closed = GPI.input(foil_gpio_pin)
+    landing_gear_down = GPI.input(master_lock_gpio_pin)
+    weapons_armed = GPI.input(arm_weapons_gpio_pin)
 else:
     running_on_pi = False
 
@@ -299,9 +310,9 @@ def aux_power_switch_check(): #called from turn_aux_power_on, check switches & t
         if GPI.input(alliance_radio_gpio_pin): #radio is on
             print("alliance radio is in on position, call start random radio")
             play_radio_with_random_delays()
-        if GPI.input(arm_weapons_gpio_pin): #Arm Weapons ***************************************ADD CHECK HERE*************
-            print("weapons are in armed position, call arm weapons")
-            play_r2_with_random_delays()
+        #if GPI.input(arm_weapons_gpio_pin): #Arm Weapons   #Not sure I need to check this as I always maintain a global flag for weapons_armed
+        #    print("weapons are in armed position, call arm_weapons")
+        #   arm_weapons()     #don't want to do this... engines need to be running. so play armed sound on engine start, not aux_power on
     aux_power_on = True
     print("aux power flag set to True")
 
@@ -335,11 +346,19 @@ def start_engine():
     if not engine_started and aux_power_on and master_lock_on:
         if not start_engine_channel.get_busy():
             start_engine_channel.play(start_engine_sound, maxtime=4500)
-	    set_engine_volume()
-        
-	    engine_channel.play(engine_sound, -1, fade_ms=7000)  # -1 parameter makes it loop non-stop
-        #*************************** set a timer that calls a function to set engeine_started = True instead of doing it here ******************
-            engine_started = True
+            set_engine_volume()
+            engine_channel.play(engine_sound, -1, fade_ms=7000)  # -1 parameter makes it loop non-stop
+            print('start 6 second timer to finish off start engine mode')
+            timer_task = Timer(6, finish_start_engine,())  # wait 5 secs then call finish_start_engine
+            aux_mode_timer_dict['aux_engine_start_TIMER'] = timer_task
+            timer_task.start()  # Start timer
+
+def finish_start_engine():
+    global engine_started
+
+    if weapons_armed:
+        arm_weapons()
+    engine_started = True
 
 def set_engine_volume():
     #if stick.get_name()=="Logitech Logitech Extreme 3D":  #only do for Logitech Joystick
@@ -358,9 +377,9 @@ def stop_engine(stop_mode):
     global engine_started
 
     if engine_started: #only stop if already started
-	if stop_mode == "landing":
-            engine_channel.fadeout(3000)		
-	    landing_sound.play()
+        if stop_mode == "landing":
+            engine_channel.fadeout(3000)
+            landing_sound.play()
         else: 				# "aux_off or key_off, do same for both
             engine_channel.play(engine_shutdown_sound)
         engine_started = False
@@ -374,8 +393,8 @@ def land_xwing():
 
     print("land_xwing function entered")
     if engine_started:
-        if landing_gear_open:
-	    stop_engine("landing")
+        if landing_gear_down:
+            stop_engine("landing")
         else:
             error_sound.play()
 
@@ -537,22 +556,38 @@ def close_foil():
             foil_channel.play(foil_sound)
         foil_position_closed = True
 
-def open_landing_gear():
-    global landing_gear_open
+def lower_landing_gear():
+    global landing_gear_down
 
-    print('open_landing_gear function entered.')
+    print('lower_landing_gear function entered.')
     if engine_started:
         landing_gear_sound.play()
-    landing_gear_open = True
+    landing_gear_down = True
 
-def close_landing_gear():
-    global landing_gear_open
+def raise_landing_gear():
+    global landing_gear_down
 
-    print('close_landing_gear function entered.')
+    print('raise_landing_gear function entered.')
     if engine_started:
         landing_gear_sound.play()
-    landing_gear_open = False
+    landing_gear_down = False
 
+def arm_weapons()
+    global weapons_armed
+
+    print('arm_weapons function entered.')
+    if engine_started:
+        weapons_armed_sound.play()
+    weapons_armed = True
+
+
+def disarm_weapons()
+    global weapons_armed
+
+    print('disarm_weapons function entered.')
+    if engine_started:
+        aknowlege_sound.play()
+    weapons_armed = False
 
 def select_weapon(self):
     global weapon_selected
@@ -563,8 +598,8 @@ def select_weapon(self):
 
 def fire_weapon():
 #    if (engine_started and weapons_armed): #example of checking two flags! Remember to add Global weapons_armed
-    if engine_started:
-        print('fire_weapon function entered.')
+    print('fire_weapon function entered.')
+    if engine_started and weapons_armed:
         if weapon_selected == 1:
             laser1_sound.play()
         elif weapon_selected == 2:
@@ -573,6 +608,8 @@ def fire_weapon():
             laser3_sound.play()
         elif weapon_selected == 4:
             torpedo_sound.play()
+    elif engine_started and not weapons_armed:
+        error_sound.play():
 
 def turn_on_microphone():
     if aux_power_on:
@@ -679,10 +716,10 @@ def read_joystick_and_keyboard():
                 play_radio_with_random_delays()
             elif event.key == pygame.K_g:
                 print("Key g down")
-                if landing_gear_open:
-                    close_landing_gear()
+                if landing_gear_down:
+                    raise_landing_gear()
                 else:
-                    open_landing_gear()
+                    lower_landing_gear()
             elif event.key == pygame.K_h:
                 print("Key h down")
                 engage_hyperdrive()
