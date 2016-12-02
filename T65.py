@@ -71,7 +71,7 @@ else:
 
 # load sounds files
 
-# pygame.mixer.music.load('sounds/music.wav')  #music, update to select from all music files*****
+pygame.mixer.music.load('sounds/Star_Wars_Soundboard_msc*.wav')  #music, update to select from all music files*****
 engine_sound = pygame.mixer.Sound('sounds/engine.wav')
 laser1_sound = pygame.mixer.Sound('sounds/laser1.wav')
 laser2_sound = pygame.mixer.Sound('sounds/laser2.wav')
@@ -294,6 +294,7 @@ def turn_aux_power_on():  #Change this to turn_aux_power_on_begin and change "au
 
     print("aux_power_on function entered")
     if master_lock_on and not aux_power_on:
+        stop_music()
         start_engine_channel.play(aux_power_on_sound)
         sound_length = aux_power_on_sound.get_length()
         timer_task = Timer(sound_length+0.5, aux_power_switch_check, ())  # wait till aux on sound is done, then check switches & start the appropriate sounds and set flag
@@ -398,13 +399,19 @@ def land_xwing():
         else:
             error_sound.play()
 
-
-def play_music():
+def toggle_music():
 # initialize music & volume - need to preload with all music
-    print('Play_Music function entered')
-#	    pygame.mixer.music.set_volume(.25)
-#	    pygame.mixer.music.play(-1, fade_ms=9000)  # -1 parameter makes it loop non-stop
+    print('play_music function entered')
+    if pygame.mixer.music.get_busy()
+        pygame.mixer.music.stop()
+    elif aux_power_on:
+        #pygame.mixer.music.set_volume(.25)
+        pygame.mixer.music.play(-1)  # -1 parameter makes it loop non-stop
 
+def stop_music():
+# initialize music & volume - need to preload with all music
+    print('stop_music function entered')
+    pygame.mixer.music.stop()
 
 def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays Between
 
@@ -704,6 +711,9 @@ def read_joystick_and_keyboard():
             elif event.key == pygame.K_l:
                 print("Key l down")
                 lock()
+            elif event.key == pygame.K_m:
+                print("Key m down")
+                toggle_music()
             elif event.key == pygame.K_i:
                 print("Key i down")
                 turn_aux_power_on()
@@ -777,7 +787,7 @@ def read_joystick_and_keyboard():
             elif button == 10:
                 play_radio_with_random_delays()
             elif button == 11:
-                play_r2_with_random_delays()  #on button ON call random music function
+                play_r2_with_random_delays()
             print("Button {} on".format(button))
         if event.type == pygame.JOYBUTTONUP:
             button = event.button
@@ -836,6 +846,7 @@ if __name__ == '__main__':
     print('Press 4 to select torpedo')
     print('Press space to fire weapon')
     print('Press h for hyperdrive')
+    print('Press m to toggle music')
     print('Press f to open & close foil')
     print('Press & hold r for R2 Radio')
     print('Press & hold a for Alliance Radio')
