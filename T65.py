@@ -93,7 +93,7 @@ xwing_turn_sound = pygame.mixer.Sound('sounds/xwing_turn.wav')
 xwing_turn_sound.set_volume(.3)
 #failed_start_engine_sound = # Add randomly failed starts!
 foil_sound = pygame.mixer.Sound('sounds/foil.wav')  #UPDATE WITH BETTER FOIL SOUND or make louder ???*****
-landing_gear_sound = pygame.mixer.Sound('sounds/foil.wav')  #UPDATE WITH LANDING GEAR SOUND
+landing_gear_sound = pygame.mixer.Sound('sounds/landing_gear.wav') 
 landing_sound = pygame.mixer.Sound('sounds/landing.wav')
 
 # load groups of sound files
@@ -572,7 +572,7 @@ def raise_landing_gear():
         landing_gear_sound.play()
     landing_gear_down = False
 
-def arm_weapons()
+def arm_weapons():
     global weapons_armed
 
     print('arm_weapons function entered.')
@@ -580,13 +580,12 @@ def arm_weapons()
         weapons_armed_sound.play()
     weapons_armed = True
 
-
-def disarm_weapons()
+def disarm_weapons():
     global weapons_armed
 
     print('disarm_weapons function entered.')
     if engine_started:
-        aknowlege_sound.play()
+        acknowledge_sound.play()
     weapons_armed = False
 
 def select_weapon(self):
@@ -609,7 +608,7 @@ def fire_weapon():
         elif weapon_selected == 4:
             torpedo_sound.play()
     elif engine_started and not weapons_armed:
-        error_sound.play():
+        error_sound.play()
 
 def turn_on_microphone():
     if aux_power_on:
@@ -723,6 +722,12 @@ def read_joystick_and_keyboard():
             elif event.key == pygame.K_h:
                 print("Key h down")
                 engage_hyperdrive()
+            elif event.key == pygame.K_w:
+                print("Key w down")
+                if weapons_armed:
+                    disarm_weapons()
+                else:
+                    arm_weapons()
             elif event.key == pygame.K_SPACE:
                 print("Key SPACE down")
                 fire_weapon()
@@ -824,6 +829,7 @@ if __name__ == '__main__':
     print('Press i for auxilary power on')
     print('Press o for auxilary power off')
     print('Press s to start engine')
+    print('Press w to arm/disarm weapons')
     print('Press 1 to select  laser1')
     print('Press 2 to select laser2')
     print('Press 3 to select laser3')
