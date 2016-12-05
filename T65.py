@@ -70,8 +70,6 @@ else:
 
 
 # load sounds files
-
-pygame.mixer.music.load('sounds/Star_Wars_Soundboard_msc*.wav')  #music, update to select from all music files*****
 engine_sound = pygame.mixer.Sound('sounds/engine.wav')
 laser1_sound = pygame.mixer.Sound('sounds/laser1.wav')
 laser2_sound = pygame.mixer.Sound('sounds/laser2.wav')
@@ -102,6 +100,7 @@ chewy_sound_files = glob.glob("sounds/Star_Wars_Soundboard_chew*.wav")
 radio_sound_files = glob.glob("sounds/radio_*.wav")
 yoda_sound_files = glob.glob("sounds/Star_Wars_Soundboard_yod*.wav")
 tie_fighter_sound_files = glob.glob("sounds/Star_Wars_Soundboard_xwtie*.wav")
+music_files = glob.glob("sounds/Star_Wars_Soundboard_msc*.wav")
 
 #Configure Channels for Sound that can't overlap, share some of the same channels, if no chance of overlap
 #************* FIX - come back and reserve these channels using pygame.mixer.set_reserved
@@ -109,6 +108,8 @@ pygame.mixer.set_num_channels(14) # default is 8
 start_engine_channel = pygame.mixer.Channel(8)
 engine_channel = pygame.mixer.Channel(1)
 pygame.mixer.set_reserved(1)
+music_channel = pygame.mixer.Channel(10)
+pygame.mixer.set_reserved(10)
 r2_channel = pygame.mixer.Channel(2) 
 radio_channel = pygame.mixer.Channel(3)
 tie_fighter_channel = pygame.mixer.Channel(4)
@@ -400,18 +401,20 @@ def land_xwing():
             error_sound.play()
 
 def toggle_music():
-# initialize music & volume - need to preload with all music
-    print('play_music function entered')
-    if pygame.mixer.music.get_busy()
-        pygame.mixer.music.stop()
-    elif aux_power_on:
-        #pygame.mixer.music.set_volume(.25)
-        pygame.mixer.music.play(-1)  # -1 parameter makes it loop non-stop
+    print('play_music function entered.')
+    if aux_power_on:
+        if not music_channel.get_busy():
+            print("not busy")
+            soundwav = random.choice(music_files)
+            musicsound1 = pygame.mixer.Sound(soundwav)
+            music_channel.play(musicsound1)
+        else:
+            music_channel.stop()
 
 def stop_music():
 # initialize music & volume - need to preload with all music
     print('stop_music function entered')
-    pygame.mixer.music.stop()
+    music_channel.stop()
 
 def play_r2_with_random_delays():   #Play random R2 Sounds, with Random Delays Between
 
@@ -503,7 +506,6 @@ def stop_enemy_fighters():
         tie_fighter_channel.stop()
         timer_task = power_mode_timer_dict['tie_fighter_alarm_TIMER']
         timer_task.cancel()
-    
     print('stop_enemy_fighters funtion')
     stop_tie_fighter_with_random_delays()
 
@@ -524,7 +526,7 @@ def play_tie_fighter_with_random_delays():   #Play random Tie Fighter Sounds, wi
 def stop_tie_fighter_with_random_delays(): #turn off Random tie fighter sounds
     key='RANDOM_tie_fighter_SOUNDS_TIMER'
     if key in power_mode_timer_dict and power_mode_timer_dict[key]:   #make sure key exists & that it has a value ******************** ADD THIS CODE TO ALL TIMER CANCEL CODE ****
-        timer_task = aux_mode_timer_dict[key]
+        timer_task = power_mode_timer_dict[key]
         timer_task.cancel()
 
 def play_tie_fighter():
