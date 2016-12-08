@@ -24,7 +24,7 @@ from threading import Thread
 aux_mode_timer_dict = dict() 
 power_mode_timer_dict = dict() 
 timeElapsed = 0 #used for random delays
-master_lock_on = False
+master_lock_on = True
 aux_power_on = False
 main_power_on = False
 engine_started = False
@@ -120,35 +120,34 @@ foil_channel = pygame.mixer.Channel(9)
 
 
 #define GPIO Pin assignment
-shared_led_power_gpio_pin = 2
-master_lock_gpio_pin = 3
-aux_power_gpio_pin = 4
-engine_start_gpio_pin = 5
-engine_start_led_gpio_pin = 6
-foil_gpio_pin = 7
-landing_gear_gpio_pin = 8
-hyperdrive_gpio_pin = 9
-arm_weapons_gpio_pin = 10
-#arm_weapons_led_gpio_pin = 10
-r2_radio_gpio_pin = 11
-alliance_radio_gpio_pin = 12
-
-f1_button_gpio_pin = 13
-f1_led_gpio_pin = 14
-f2_button_gpio_pin = 15
-f2_led_gpio_pin = 16
-f3_button_gpio_pin = 17
-f3_led_gpio_pin = 18
-f4_button_gpio_pin = 19
-f4_led_gpio_pin = 20
-f5_button_gpio_pin = 21
-f5_led_gpio_pin = 22
-f6_button_gpio_pin = 23
-f6_led_gpio_pin = 24
-f7_button_gpio_pin = 25
-f7_led_gpio_pin = 26
-f8_button_gpio_pin = 27
-f8_led_gpio_pin = 26   # Two of the function keys LEDs may need to share a power, and always flash together...
+shared_led_power_gpio_pin=6
+master_lock_gpio_pin=21
+aux_power_gpio_pin=20
+engine_start_gpio_pin=26
+engine_start_led_gpio_pin=19
+foil_gpio_pin=16
+landing_gear_gpio_pin=12
+hyperdrive_gpio_pin=7
+arm_weapons_gpio_pin=13
+#arm_weapons_led_gpio_pin=
+r2_radio_gpio_pin=11
+alliance_radio_gpio_pin=5
+f1_button_gpio_pin= 8
+f1_led_gpio_pin=25
+f2_button_gpio_pin=24
+f2_led_gpio_pin=23
+f3_button_gpio_pin=18
+f3_led_gpio_pin=15
+f4_button_gpio_pin=9
+f4_led_gpio_pin=10
+f5_button_gpio_pin=22
+f5_led_gpio_pin=27
+f6_button_gpio_pin=17
+f6_led_gpio_pin=4
+f7_button_gpio_pin=3
+f7_and_f8_led_gpio_pin=2
+f8_button_gpio_pin=14
+# f8_led_gpio_pin=2  Shared with f7 LED Pin
 
 #check if running on Raspberry Pi
 if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop
@@ -183,7 +182,7 @@ else:
 
 def my_callback(channel):  # Test of a push button, play flag toggle output of GPIO 27
     global gpio_27_flag
-    # global mythread
+    # global led_flash_thread
 
     print('This is a edge event callback function!')
     print('Edge detected on channel %s' % channel)
@@ -192,12 +191,12 @@ def my_callback(channel):  # Test of a push button, play flag toggle output of G
     error_sound.play()
     if running_on_pi:
         if gpio_27_flag:
-            mythread.stopflash()
+            led_flash_thread.stopflash()
             gpio_27_flag = False
         else:
             gpio_27_flag = True
             # GPIO.output(27,gpio_27_flag)
-            mythread.startflash()
+            led_flash_thread.startflash()
 
 
 def my_callback2(channel):
@@ -213,30 +212,62 @@ def my_callback2(channel):
 
 ################################ START OF FLASHY LIGHT SAMPLE CODE ############################
 #Flashy Light Code - to control LEDs
-class LedThread(Thread):
+class led_flash_thread_class(Thread):
     def __init__(self):
-        super(LedThread, self).__init__()
+        super(led_flash_thread_class, self).__init__()
         self._keepgoing = True
         self._flashLED = False
+        self.aux_power_sequence = False
         self._list_of_pins =  []
 
     def run(self):
-        print("LedThread is running")
+        print("led_flash_thread_class is running")
         while self._keepgoing:
-            if self._flashLED:
-                GPIO.output(27, True)
+            if self.aux_power_sequence:
+                print("start the LED light sequence for when aux_power is turned on")
+                # flash the shared pins, then cycle through the function key LEDs 2 at a time...
+                #this will continue until the end... even if Aux power is killed, need way to stop While statement immediately...
+                #add a check before each new section of start up... to see if Still in Aux Power on... test by stopping Aux power part way through...
+                GPIO.output(f1_led_gpio_pin, True)
+                GPIO.output(f2_led_gpio_pin, True)
+                time.sleep(.5)
+                GPIO.output(f1_led_gpio_pin, False)
+                GPIO.output(f2_led_gpio_pin, False)
+                time.sleep(.5)
+                if self.aux_power_sequence: #flash a second time
+                    GPIO.output(f1_led_gpio_pin, True)
+                    GPIO.output(f2_led_gpio_pin, True)
+                    time.sleep(.5)
+                    GPIO.output(f1_led_gpio_pin, False)
+                    GPIO.output(f2_led_gpio_pin, False)
+                    time.sleep(.5)
+                self.aux_power_sequence = False #stop this portion of while statement from continuing..
+            if self.aux_power_off_sequence:
+                print("start the LED light sequence for when aux_power is turned off, flash the lights twice...")
+    #************** add LED sequence for off ***********************
+            elif self._flashLED:
+                GPIO.output(engine_start_led_gpio_pin, True)
                 time.sleep(.5)
                 GPIO.output(27, False)
                 time.sleep(.5)
 
-    def stopflash(self):
+    def stopflash(self):    #Used for LED Test
         self._flashLED = False
         GPIO.output(27, False)
-        print("LEDThread-stopflash called")
+        print("led_flash_thread_class-stopflash called")
 
     def startflash(self):
         self._flashLED = True
-        print("LEDThread-flash called")
+        print("led_flash_thread_class-flash called")
+
+    def start_aux_power_sequence(self):
+        self.aux_power_sequence = True
+        print("Start Aux Power Light sequence in separate thread")
+
+    def stop_aux_power_sequence(self):
+        self.aux_power_sequence = False
+        print("Stop Aux Power Light sequence in separate thread")
+
 
     def add_to_list(self,element):
         self._list_of_pins.insert(0, element)
@@ -255,14 +286,17 @@ class LedThread(Thread):
         GPIO.output(27, False)
 
 
-mythread = LedThread()  # this needs to be initialized... not sure where
-mythread.start()
-mythread.add_to_list(21)
-mythread.add_to_list(22)
-mythread.print_list()
-mythread.remove_from_list(22)
-mythread.print_list()
+led_flash_thread = led_flash_thread_class()  # this needs to be initialized... not sure where
+led_flash_thread.start()
+led_flash_thread.add_to_list(21)
+led_flash_thread.add_to_list(22)
+led_flash_thread.print_list()
+led_flash_thread.remove_from_list(22)
+led_flash_thread.print_list()
 ################################ END OF FLASHY LIGHT SAMPLE CODE ############################
+
+led_flash_tread.starter_begin_flash()
+
 
 def unlock():
     global master_lock_on
@@ -297,6 +331,7 @@ def turn_aux_power_on():  #Change this to turn_aux_power_on_begin and change "au
     if master_lock_on and not aux_power_on:
         stop_music()
         start_engine_channel.play(aux_power_on_sound)
+        led_flash_tread.starter_begin_flash()
         sound_length = aux_power_on_sound.get_length()
         timer_task = Timer(sound_length+0.5, aux_power_switch_check, ())  # wait till aux on sound is done, then check switches & start the appropriate sounds and set flag
         aux_mode_timer_dict['aux_power_on_TIMER'] = timer_task
@@ -658,7 +693,7 @@ def read_joystick_and_keyboard():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
-            mythread.kill()
+            led_flash_thread.kill()
             sys.exit()
         if event.type == pygame.KEYDOWN:
             print("keyboard KEYDOWN")
@@ -751,7 +786,7 @@ def read_joystick_and_keyboard():
                     close_foil()
             elif event.key == pygame.K_q:
                 pygame.quit()
-                mythread.kill() # this causes an error on x86 because no GPIO 
+                led_flash_thread.kill() # this causes an error on x86 because no GPIO
                 sys.exit()
         if event.type == pygame.KEYUP:
             print("keyboard KEYUP")
