@@ -118,6 +118,45 @@ chewy_channel = pygame.mixer.Channel(6)
 hyperdrive_channel = pygame.mixer.Channel(7) 
 foil_channel = pygame.mixer.Channel(9)
 
+def lock_event(channel):
+    global master_lock_on
+    print("Lock Event Handler Entered, Pin = :", GPIO.input(master_lock_gpio_pin))
+
+    if GPIO.input(master_lock_gpio_pin):
+        #master_lock_on = True
+        print("master lock = ", GPIO.input(master_lock_gpio_pin))
+        lock()
+    else:
+        #master_lock_on = False
+        unlock()
+
+def unlock():
+    global master_lock_on
+
+    master_lock_on = True
+    print("Master key is ON")
+    #check if aux power switch is on position, if so turn on aux_power           
+    if  aux_power_on: #Aux on
+        print("Aux switch is in on position, call aux_power_on func")
+        turn_aux_power_on()
+
+def lock():
+    global master_lock_on
+
+    master_lock_on = False
+    print("Master key is OFF")
+    for key in aux_mode_timer_dict: #stop all timers
+        print(key)
+        timer_task = aux_mode_timer_dict[key]
+        timer_task.cancel()
+    pygame.mixer.stop()  #stop all sound
+    # CHECK IF STARTED IF SO>>> PLAY STOP ENGINE SOUND, OTHERWISE< CHECK IF aux on... etc
+    if engine_started:
+        stop_engine("lock_off")
+    elif aux_power_on:
+        turn_aux_power_off()
+
+
 
 #define GPIO Pin assignment
 shared_led_power_gpio_pin=6
@@ -149,36 +188,7 @@ f7_and_f8_led_gpio_pin=2
 f8_button_gpio_pin=14
 # f8_led_gpio_pin=2  Shared with f7 LED Pin
 
-#check if running on Raspberry Pi
-if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop
-    running_on_pi = True
-    import RPi.GPIO as GPIO
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(22,GPIO.IN)
-    GPIO.setup(17,GPIO.IN)
-    GPIO.setup(27,GPIO.OUT)
 
-    GPIO.add_event_detect(22, GPIO.RISING, callback=my_callback, bouncetime=400)  #SAMPLE ON RISE EVENT CALL my_callback
-    GPIO.add_event_detect(17, GPIO.RISING, callback=my_callback2, bouncetime=400) #SAMPLE ON RISE EVENT CALL my_callback2
-# Enable Event Handling for GPIO Input Pins - ie. switches & buttons
-    GPIO.add_event_detect(master_lock_gpio_pin, GPIO.RISING, callback=lock_change, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Locking or Unlocking************
-    GPIO.add_event_detect(master_lock_gpio_pin, GPIO.FALLING, callback=lock_change, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Locking or Unlocking************
-    GPIO.add_event_detect(aux_power_gpio_pin, GPIO.RISING, callback=turn_aux_power_on, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
-    GPIO.add_event_detect(aux_power_gpio_pin, GPIO.FALLING, callback=turn_aux_power_off, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
-    GPIO.add_event_detect(landing_gear_gpio_pin, GPIO.RISING, callback=lower_landing_gear, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
-    GPIO.add_event_detect(landing_gear_gpio_pin, GPIO.FALLING, callback=raise_landing_gear, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
-    GPIO.add_event_detect(arm_weapons_gpio_pin, GPIO.RISING, callback=arm_weapons(), bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
-    GPIO.add_event_detect(arm_weapons_gpio_pin, GPIO.FALLING, callback=disarm_weapons(), bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
-
-
-# Get initial settings and set flags
-    master_lock_on = GPI.input(master_lock_gpio_pin)
-    aux_power_on = GPI.input(aux_power_gpio_pin)
-    foil_position_closed = GPI.input(foil_gpio_pin)
-    landing_gear_down = GPI.input(master_lock_gpio_pin)
-    weapons_armed = GPI.input(arm_weapons_gpio_pin)
-else:
-    running_on_pi = False
 
 def my_callback(channel):  # Test of a push button, play flag toggle output of GPIO 27
     global gpio_27_flag
@@ -286,43 +296,31 @@ class led_flash_thread_class(Thread):
         GPIO.output(27, False)
 
 
-led_flash_thread = led_flash_thread_class()  # this needs to be initialized... not sure where
-led_flash_thread.start()
-led_flash_thread.add_to_list(21)
-led_flash_thread.add_to_list(22)
-led_flash_thread.print_list()
-led_flash_thread.remove_from_list(22)
-led_flash_thread.print_list()
+#led_flash_thread = led_flash_thread_class()  # this needs to be initialized... not sure where
+#led_flash_thread.start()
+#led_flash_thread.add_to_list(21)
+#led_flash_thread.add_to_list(22)
+#led_flash_thread.print_list()
+#led_flash_thread.remove_from_list(22)
+#led_flash_thread.print_list()
 ################################ END OF FLASHY LIGHT SAMPLE CODE ############################
 
-led_flash_tread.starter_begin_flash()
+#led_flash_tread.starter_begin_flash()
 
-
-def unlock():
-    global master_lock_on
-
-    master_lock_on = True
-    print("Master key is ON")
-    #check if aux power switch is on position, if so turn on aux_power           
-    if  aux_power_on: #Aux on
-        print("Aux switch is in on position, call aux_power_on func")
-        turn_aux_power_on()
-
-def lock():
-    global master_lock_on
-
-    master_lock_on = False
-    print("Master key is OFF")
-    for key in aux_mode_timer_dict: #stop all timers
-        print(key)
-        timer_task = aux_mode_timer_dict[key]
-        timer_task.cancel()
-    pygame.mixer.stop()  #stop all sound
-    # CHECK IF STARTED IF SO>>> PLAY STOP ENGINE SOUND, OTHERWISE< CHECK IF aux on... etc
-    if engine_started:
-        stop_engine("lock_off")
-    elif aux_power_on:
+def aux_power_event(channel):
+    global aux_power_on
+    print("Aux Power Event Handler Entered.  Pin =", GPIO.input(aux_power_gpio_pin))
+    
+    if GPIO.input(aux_power_gpio_pin):
+        #aux_power_on = True
         turn_aux_power_off()
+    else:
+        #aux_power_on = False
+        turn_aux_power_on()
+    print("Aux Power = ", aux_power_on)
+
+
+
  
 def turn_aux_power_on():  #Change this to turn_aux_power_on_begin and change "aux_power_switch_check" to "aux_power_on_end"
     global aux_power_on
@@ -331,7 +329,7 @@ def turn_aux_power_on():  #Change this to turn_aux_power_on_begin and change "au
     if master_lock_on and not aux_power_on:
         stop_music()
         start_engine_channel.play(aux_power_on_sound)
-        led_flash_tread.starter_begin_flash()
+        #led_flash_tread.starter_begin_flash()
         sound_length = aux_power_on_sound.get_length()
         timer_task = Timer(sound_length+0.5, aux_power_switch_check, ())  # wait till aux on sound is done, then check switches & start the appropriate sounds and set flag
         aux_mode_timer_dict['aux_power_on_TIMER'] = timer_task
@@ -340,13 +338,13 @@ def turn_aux_power_on():  #Change this to turn_aux_power_on_begin and change "au
 
 def aux_power_switch_check(): #called from turn_aux_power_on, check switches & turns on appropriate actions
     global aux_power_on
-    if running_on_pi:
-        if  GPI.input(r2_radio_gpio_pin): #R2 on
-            print("r2 radio is in on position, call start random r2")
-            play_r2_with_random_delays()
-        if GPI.input(alliance_radio_gpio_pin): #radio is on
-            print("alliance radio is in on position, call start random radio")
-            play_radio_with_random_delays()
+    #if running_on_pi:
+        #if  GPI.input(r2_radio_gpio_pin): #R2 on
+        #    print("r2 radio is in on position, call start random r2")
+        #    play_r2_with_random_delays()
+        #if GPI.input(alliance_radio_gpio_pin): #radio is on
+        #    print("alliance radio is in on position, call start random radio")
+             #    play_radio_with_random_delays()
         #if GPI.input(arm_weapons_gpio_pin): #Arm Weapons   #Not sure I need to check this as I always maintain a global flag for weapons_armed
         #    print("weapons are in armed position, call arm_weapons")
         #   arm_weapons()     #don't want to do this... engines need to be running. so play armed sound on engine start, not aux_power on
@@ -690,6 +688,23 @@ def play_turn_sound():
 
 def read_joystick_and_keyboard():
     #print("reading joystick")
+    if GPIO.event_detected(master_lock_gpio_pin):
+        time.sleep(0.05)
+        print("GPIO MasterLock:", GPIO.input(master_lock_gpio_pin))
+        if GPIO.input(master_lock_gpio_pin):
+            lock()
+        else:
+            unlock()
+    if GPIO.event_detected(aux_power_gpio_pin):
+        time.sleep(0.02) 
+        print("GPIO Aux Power:", GPIO.input(aux_power_gpio_pin))
+        if GPIO.input(aux_power_gpio_pin):
+            turn_aux_power_on()
+        else:
+            turn_aux_power_off()
+    if GPIO.event_detected(engine_start_gpio_pin):
+        print("Start Button Pressed")
+        start_engine()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -862,6 +877,59 @@ def read_joystick_and_keyboard():
                 #self.verticalPosition = event.value
 
 
+#check if running on Raspberry Pi
+if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop
+    running_on_pi = True
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(master_lock_gpio_pin,GPIO.IN)
+    GPIO.setup(aux_power_gpio_pin,GPIO.IN)
+    GPIO.setup(engine_start_gpio_pin,GPIO.IN)
+
+    GPIO.setup(engine_start_led_gpio_pin,GPIO.OUT)
+    GPIO.output(engine_start_led_gpio_pin, False)
+
+    GPIO.setup(shared_led_power_gpio_pin,GPIO.OUT)
+    GPIO.output(shared_led_power_gpio_pin, True)
+
+
+    #GPIO.setup(27,GPIO.OUT)
+
+    #GPIO.add_event_detect(22, GPIO.RISING, callback=my_callback, bouncetime=400)  #SAMPLE ON RISE EVENT CALL my_callback
+    #GPIO.add_event_detect(17, GPIO.RISING, callback=my_callback2, bouncetime=400) #SAMPLE ON RISE EVENT CALL my_callback2
+# Enable Event Handling for GPIO Input Pins - ie. switches & buttons
+    GPIO.add_event_detect(master_lock_gpio_pin, GPIO.BOTH, bouncetime=400)  
+    #GPIO.add_event_detect(master_lock_gpio_pin, GPIO.FALLING, callback=lock, bouncetime=400)  
+    #GPIO.add_event_detect(aux_power_gpio_pin, GPIO.BOTH, callback=aux_power_event, bouncetime=40)
+    GPIO.add_event_detect(aux_power_gpio_pin, GPIO.BOTH, bouncetime=200)
+    GPIO.add_event_detect(engine_start_gpio_pin, GPIO.FALLING, bouncetime=400)  
+    #GPIO.add_event_detect(aux_power_gpio_pin, GPIO.FALLING, callback=turn_aux_power_off, bouncetime=400) 
+    #GPIO.add_event_detect(landing_gear_gpio_pin, GPIO.RISING, callback=lower_landing_gear, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    #GPIO.add_event_detect(landing_gear_gpio_pin, GPIO.FALLING, callback=raise_landing_gear, bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    #GPIO.add_event_detect(arm_weapons_gpio_pin, GPIO.RISING, callback=arm_weapons(), bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+    #GPIO.add_event_detect(arm_weapons_gpio_pin, GPIO.FALLING, callback=disarm_weapons(), bouncetime=400)  #CALL BACK NEEDED FOR THIS... check if it's Aux Power On or Off***********
+
+
+# Get initial settings and set flags
+    if GPIO.input(master_lock_gpio_pin)==1:
+        master_lock_on = True
+    else:
+        master_lock_on = False
+    print("Master Lock value = ", master_lock_on)
+    if GPIO.input(aux_power_gpio_pin) ==1:
+        aux_power_on = True
+    else:
+        aux_power_on = False
+    print("Aux Power = ", aux_power_on)
+    #foil_position_closed = GPI.input(foil_gpio_pin)
+    #landing_gear_down = GPI.input(master_lock_gpio_pin)
+    #weapons_armed = GPI.input(arm_weapons_gpio_pin)
+else:
+    running_on_pi = False
+
+
+
+
 ## game loop
 gameloop = True
 if __name__ == '__main__':
@@ -891,11 +959,12 @@ if __name__ == '__main__':
     print('Press F1 to hear Yoda')
     print('Press F2 to hear Chewy')
     print('Press F5 to land - gear must be down')
-
+    
     while gameloop:
+        
         read_joystick_and_keyboard()
           # Print END PROGRAM Statement
-        time.sleep(0.01) #adding this gives subprocesses like detecting GPIO time to do their thing, fixed delay when pressing GPIO button
+        #time.sleep(0.01) #adding this gives subprocesses like detecting GPIO time to do their thing, fixed delay when pressing GPIO button
     print('END PROGRAM')
     pygame.quit() # clean exit
 
