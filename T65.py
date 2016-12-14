@@ -33,7 +33,6 @@ landing_gear_down = True
 weapon_selected = 1
 foil_position_closed = True
 
-gpio_27_flag = False # remove later, just for GPIO Tests & Sample
 
 # Initiate display window, required to collect key board input
 game_display = pygame.display.set_mode((800, 600))
@@ -158,7 +157,7 @@ class led_flash_thread_class(Thread):
 
     def stopflash(self):    #Used for LED Test
         self._flashLED = False
-        GPIO.output(27, False)
+#        GPIO.output(27, False)
         print("led_flash_thread_class-stopflash called")
 
     def startflash(self):
@@ -243,10 +242,8 @@ def lock():
         turn_aux_power_off()
 
 def turn_aux_power_on():  #Rename this function to turn_aux_power_on_begin and change "aux_power_switch_check" to "aux_power_on_end"
-    global aux_power_on
-
     print("aux_power_on function entered")
-    if master_lock_on and not aux_power_on:
+    if master_lock_on:        # and not aux_power_on:  don't think i want to check if aux_power isn't on... since when key goes on, we want this logic to execute
         stop_music()
         start_engine_channel.play(aux_power_on_sound)
         #led_flash_tread.starter_begin_flash()
@@ -257,16 +254,13 @@ def turn_aux_power_on():  #Rename this function to turn_aux_power_on_begin and c
     
 def aux_power_switch_check(): #called from turn_aux_power_on, check switches & turns on appropriate actions
     global aux_power_on
-    #if running_on_pi:
-        #if  GPI.input(r2_radio_gpio_pin): #R2 on
-        #    print("r2 radio is in on position, call start random r2")
-        #    play_r2_with_random_delays()
-        #if GPI.input(alliance_radio_gpio_pin): #radio is on
-        #    print("alliance radio is in on position, call start random radio")
-             #    play_radio_with_random_delays()
-        #if GPI.input(arm_weapons_gpio_pin): #Arm Weapons   #Not sure I need to check this as I always maintain a global flag for weapons_armed
-        #    print("weapons are in armed position, call arm_weapons")
-        #   arm_weapons()     #don't want to do this... engines need to be running. so play armed sound on engine start, not aux_power on
+    if running_on_pi:
+        if  GPI.input(r2_radio_gpio_pin): #R2 on
+            print("r2 radio is in on position, call start random r2")
+            play_r2_with_random_delays()
+        if GPI.input(alliance_radio_gpio_pin): #radio is on
+            print("alliance radio is in on position, call start random radio")
+            play_radio_with_random_delays()
     aux_power_on = True
     print("aux power flag set to True")
 
@@ -288,7 +282,6 @@ def turn_aux_power_off():
         stop_engine("aux_off")
     elif master_lock_on:
         print("engine wasn't started but key is on so play aux_power_off sound")
-        #***********add check if channel busy?)
         start_engine_channel.play(aux_power_off_sound)
     aux_power_on = False
 
@@ -340,7 +333,7 @@ def stop_engine(stop_mode):
         for key in power_mode_timer_dict: #stop all timers in Engine Power Mode
             timer_task = power_mode_timer_dict[key]
             timer_task.cancel()
-        #Add Stop any sounds that can only play when engine is engaged!*****new tie fighters should be stopped by killing timer above, stop hyperdrive?
+        ######################Add Stop any sounds that can only play when engine is engaged!*****new tie fighters should be stopped by killing timer above, stop hyperdrive?
         
 def land_xwing():
     global engine_started
@@ -373,7 +366,7 @@ def play_r2_with_random_delays():
     global timeElapsed
 
     play_r2() #calls function to play Random R2 sounds
-    delay = randint(1,3);
+    delay = randint(2,10);
     timeElapsed += delay
     print(': play_r2_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
     timer_task = Timer(delay, play_r2_with_random_delays, ()) # Create New Timer Task
@@ -452,7 +445,7 @@ def play_tie_fighter_with_random_delays():   #Play random Tie Fighter Sounds, wi
     global timeElapsed
 
     play_tie_fighter() #calls function to play Random tighter fighter sounds
-    delay = randint(1,3);  # Calculate Delay
+    delay = randint(1,10);  # Calculate Delay
     timeElapsed += delay
     print(': play_tie_fighter_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
     # Create New Timer Task
@@ -481,6 +474,7 @@ def engage_hyperdrive():
         if not hyperdrive_channel.get_busy():  
             if foil_position_closed:
                 hyperdrive_channel.play(hyperdrive_sound)
+                stop_tie_fighter_with_random_delays()
             else:
                 error_sound.play()
 
@@ -583,7 +577,7 @@ def play_chewy():
 def play_hat():
     if engine_started:
         print('joystick hat button moved')
-        error_sound.play()
+        acknowledge_sound.play()
 
 def play_turn_sound():
     if engine_started:
@@ -676,6 +670,7 @@ def read_joystick_gpio_and_keyboard():
     if GPIO.event_detected(f1_button_gpio_pin):
         print("F1 Button Pressed")
         #Feature here
+        start_enemy_fighters()
     if GPIO.event_detected(f2_button_gpio_pin):
         print("F2 Button Pressed")
         #Feature here
@@ -685,6 +680,7 @@ def read_joystick_gpio_and_keyboard():
     if GPIO.event_detected(f4_button_gpio_pin):
         print("F4 Button Pressed")
         #Feature here
+        land_xwing()
     if GPIO.event_detected(f5_button_gpio_pin):
         print("F5 Button Pressed")
         #Feature here
@@ -808,6 +804,7 @@ def read_joystick_gpio_and_keyboard():
             if event.key == pygame.K_a:
                 print("Key a up")
                 stop_radio_with_random_delays()
+
         # HANDLE JOYSTICK EVENTS
         if event.type == pygame.JOYBUTTONDOWN:
             button = event.button
@@ -823,27 +820,25 @@ def read_joystick_gpio_and_keyboard():
                 select_weapon(1)
             elif button == 5:
                 select_weapon(4)
-            elif button == 6:
-                engage_hyperdrive()
+            elif button == 6: #
+                #add C3PO sounds here ***********************************
+                print('need function here')
             elif button == 7:
-                fire_weapon()
+                play_chewy()
             elif button == 8:
-                open_foil()
+                toggle_music()
             elif button == 9:
-                close_foil()
+                play_yoda()
             elif button == 10:
-                play_radio_with_random_delays()
+                #add Explosion sound here ***********************************
+                print('need function here')
             elif button == 11:
-                play_r2_with_random_delays()
+                play_r2()
             print("Button {} on".format(button))
         if event.type == pygame.JOYBUTTONUP:
             button = event.button
             if button == 1:
                 turn_off_microphone()
-            elif button == 11:
-                stop_r2_with_random_delays() #turn off Random R2 sounds
-            elif button == 10:
-                stop_radio_with_random_delays()
             print("Button {} off".format(button))
         if event.type == pygame.JOYHATMOTION:
             if event.hat == 0:
