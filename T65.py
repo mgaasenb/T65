@@ -35,10 +35,16 @@ foil_position_closed = True
 
 
 # Initiate display window, required to collect key board input
+#os.environ['SDL_VIDEODRIVER'] = 'dummy'
+screen = pygame.display.set_mode((1, 1))
+
 game_display = pygame.display.set_mode((800, 600))
+
 #xwing_image = pygame.image.load('xwing.png')
+
 pygame.display.set_caption('T-65 Simulator')
 game_display.fill((0,0,0)) 
+
 #sys_font = pygame.font.SysFont("monospace",30)  #need a font file
 #game_display.blit(xwing_image,(350,300))
 
@@ -65,37 +71,37 @@ else:
 
 
 # load sounds files
-engine_sound = pygame.mixer.Sound('sounds/engine.wav')
-laser1_sound = pygame.mixer.Sound('sounds/laser1.wav')
-laser2_sound = pygame.mixer.Sound('sounds/laser2.wav')
-laser3_sound = pygame.mixer.Sound('sounds/laser3.wav')
-weapons_armed_sound = pygame.mixer.Sound('sounds/weapons_armed.wav')
-alarm_sound = pygame.mixer.Sound('sounds/alarm_02.wav')
-torpedo_sound = pygame.mixer.Sound('sounds/torpedo.wav') 
-button_press_sound = pygame.mixer.Sound('sounds/button_press.wav') 
+engine_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/engine.wav')
+laser1_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/laser1.wav')
+laser2_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/laser2.wav')
+laser3_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/laser3.wav')
+weapons_armed_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/weapons_armed.wav')
+alarm_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/alarm_02.wav')
+torpedo_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/torpedo.wav') 
+button_press_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/button_press.wav') 
 button_press_sound.set_volume(.2)
-acknowledge_sound = pygame.mixer.Sound('sounds/acknowledge.wav')
-error_sound = pygame.mixer.Sound('sounds/error.wav')
-microphone_on_sound = pygame.mixer.Sound('sounds/mic_static.wav')  
-hyperdrive_sound = pygame.mixer.Sound('sounds/hyperdrive.wav')  
-start_engine_sound = pygame.mixer.Sound('sounds/startengine.wav')
-aux_power_on_sound = pygame.mixer.Sound('sounds/aux_power_on.wav')  
-aux_power_off_sound = pygame.mixer.Sound('sounds/aux_power_off.wav')
-engine_shutdown_sound = pygame.mixer.Sound('sounds/engine_shutdown.wav')
-xwing_turn_sound = pygame.mixer.Sound('sounds/xwing_turn.wav') 
+acknowledge_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/acknowledge.wav')
+error_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/error.wav')
+microphone_on_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/mic_static.wav')  
+hyperdrive_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/hyperdrive.wav')  
+start_engine_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/startengine.wav')
+aux_power_on_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/aux_power_on.wav')  
+aux_power_off_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/aux_power_off.wav')
+engine_shutdown_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/engine_shutdown.wav')
+xwing_turn_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/xwing_turn.wav') 
 xwing_turn_sound.set_volume(.3)
 #failed_start_engine_sound = # Add randomly failed starts!
-foil_sound = pygame.mixer.Sound('sounds/foil.wav')  #UPDATE WITH BETTER FOIL SOUND or make louder ???*****
-landing_gear_sound = pygame.mixer.Sound('sounds/landing_gear.wav') 
-landing_sound = pygame.mixer.Sound('sounds/landing.wav')
+foil_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/foil.wav')  #UPDATE WITH BETTER FOIL SOUND or make louder ???*****
+landing_gear_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/landing_gear.wav') 
+landing_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/landing.wav')
 
 # load groups of sound files
-r2_sound_files = glob.glob("sounds/r2d2_*.wav")
-chewy_sound_files = glob.glob("sounds/Star_Wars_Soundboard_chew*.wav")
-radio_sound_files = glob.glob("sounds/radio_*.wav")
-yoda_sound_files = glob.glob("sounds/Star_Wars_Soundboard_yod*.wav")
-tie_fighter_sound_files = glob.glob("sounds/Star_Wars_Soundboard_xwtie*.wav")
-music_files = glob.glob("sounds/Star_Wars_Soundboard_msc*.wav")
+r2_sound_files = glob.glob("/home/pi/git/T65/sounds/r2d2_*.wav")
+chewy_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_chew*.wav")
+radio_sound_files = glob.glob("/home/pi/git/T65/sounds/radio_*.wav")
+yoda_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_yod*.wav")
+tie_fighter_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_xwtie*.wav")
+music_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_msc*.wav")
 
 #Configure Channels for Sound that can't overlap, share some of the same channels, if no chance of overlap
 #************* FIX - come back and reserve these channels using pygame.mixer.set_reserved
@@ -255,13 +261,21 @@ def turn_aux_power_on():  #Rename this function to turn_aux_power_on_begin and c
 def aux_power_switch_check(): #called from turn_aux_power_on, check switches & turns on appropriate actions
     global aux_power_on
     if running_on_pi:
-        if  GPI.input(r2_radio_gpio_pin): #R2 on
+        if not GPIO.input(r2_radio_gpio_pin): #R2 on
             print("r2 radio is in on position, call start random r2")
             play_r2_with_random_delays()
-        if GPI.input(alliance_radio_gpio_pin): #radio is on
+        if not GPIO.input(alliance_radio_gpio_pin): #radio is on
             print("alliance radio is in on position, call start random radio")
             play_radio_with_random_delays()
-    aux_power_on = True
+        GPIO.output(shared_led_power_gpio_pin, True)
+        GPIO.output(f1_led_gpio_pin, True)
+        GPIO.output(f2_led_gpio_pin, True)
+        GPIO.output(f3_led_gpio_pin, True)
+        GPIO.output(f4_led_gpio_pin, True)
+        GPIO.output(f5_led_gpio_pin, True)
+        GPIO.output(f6_led_gpio_pin, True)
+        GPIO.output(f7_and_f8_led_gpio_pin, True)
+        aux_power_on = True
     print("aux power flag set to True")
 
 def turn_aux_power_off():
@@ -283,6 +297,15 @@ def turn_aux_power_off():
     elif master_lock_on:
         print("engine wasn't started but key is on so play aux_power_off sound")
         start_engine_channel.play(aux_power_off_sound)
+    if running_on_pi:
+        GPIO.output(shared_led_power_gpio_pin, False)
+        GPIO.output(f1_led_gpio_pin, False)
+        GPIO.output(f2_led_gpio_pin, False)
+        GPIO.output(f3_led_gpio_pin, False)
+        GPIO.output(f4_led_gpio_pin, False)
+        GPIO.output(f5_led_gpio_pin, False)
+        GPIO.output(f6_led_gpio_pin, False)
+        GPIO.output(f7_and_f8_led_gpio_pin, False)
     aux_power_on = False
 
 
@@ -646,21 +669,21 @@ def read_joystick_gpio_and_keyboard():
     if GPIO.event_detected(r2_radio_gpio_pin):
         time.sleep(0.02)
         print("GPIO R2 Radio:", GPIO.input(r2_radio_gpio_pin))
-        if GPIO.input(r2_radio_gpio_pin):
+        if not GPIO.input(r2_radio_gpio_pin):
             play_r2_with_random_delays()
         else:
             stop_r2_with_random_delays()
     if GPIO.event_detected(alliance_radio_gpio_pin):
         time.sleep(0.02)
         print("GPIO Alliance Radio:", GPIO.input(alliance_radio_gpio_pin))
-        if GPIO.input(alliance_radio_gpio_pin):
+        if not GPIO.input(alliance_radio_gpio_pin):
             play_radio_with_random_delays()
         else:
             stop_radio_with_random_delays()
     if GPIO.event_detected(arm_weapons_gpio_pin):
         time.sleep(0.02)
         print("GPIO Weapons Armed :", GPIO.input(arm_weapons_gpio_pin))
-        if GPIO.input(arm_weapons_gpio_pin):
+        if not GPIO.input(arm_weapons_gpio_pin):
             arm_weapons()
         else:
             disarm_weapons()
@@ -858,7 +881,7 @@ def read_joystick_gpio_and_keyboard():
                     play_turn_sound()
                 elif event.value < -0.7:
                     play_turn_sound()
-            elif event.axis == 2:
+            #elif event.axis == 2:
                 #print("event value axis 2: {}".format(event.value))
             elif event.axis == 3:
                 #print("event value axis 3: {}".format(event.value))
@@ -903,7 +926,7 @@ if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' f
     GPIO.setmode(GPIO.BCM)
 
     GPIO.setup(shared_led_power_gpio_pin,GPIO.OUT)
-    GPIO.output(shared_led_power_gpio_pin, True)
+    GPIO.output(shared_led_power_gpio_pin, False)
     GPIO.setup(master_lock_gpio_pin,GPIO.IN)
     GPIO.setup(aux_power_gpio_pin,GPIO.IN)
     GPIO.setup(engine_start_gpio_pin,GPIO.IN)
@@ -917,7 +940,7 @@ if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' f
     GPIO.setup(r2_radio_gpio_pin,GPIO.IN)
     GPIO.setup(alliance_radio_gpio_pin,GPIO.IN)
     GPIO.setup(f1_button_gpio_pin,GPIO.IN)
-    GPIO.setup(f1_led_gpio_pin,GPIO.IN)
+    GPIO.setup(f1_led_gpio_pin,GPIO.OUT)
     GPIO.setup(f2_button_gpio_pin,GPIO.IN)
     GPIO.setup(f2_led_gpio_pin,GPIO.OUT)
     GPIO.setup(f3_button_gpio_pin,GPIO.IN)
@@ -962,17 +985,17 @@ if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' f
     else:
         aux_power_on = False
     print("Aux Power = ", aux_power_on)
-    if GPI.input(foil_gpio_pin):
+    if GPIO.input(foil_gpio_pin):
         foil_position_closed = False
     else:
         foil_position_closed = True
     print ("Foil position closed = ", foil_position_closed)
-    if GPI.input(landing_gear_gpio_pin):
+    if GPIO.input(landing_gear_gpio_pin):
         landing_gear_down = False
     else:
         landing_gear_down = True
     print ("Landing Gear Down = ", landing_gear_down)
-    if GPI.input(arm_weapons_gpio_pin):
+    if not GPIO.input(arm_weapons_gpio_pin):
         weapons_armed = True
     else:
         weapons_armed = False
