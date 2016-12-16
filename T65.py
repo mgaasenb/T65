@@ -909,77 +909,77 @@ def read_joystick_gpio_and_keyboard():
                     pygame.quit()
                     led_flash_thread.kill() # this causes an error on x86 because no GPIO
                     sys.exit()
-            if event.type == pygame.KEYUP:
-                print("keyboard KEYUP")
-                if event.key == pygame.K_r:
-                    print("Key r up")
-                    stop_r2_with_random_delays()
-                if event.key == pygame.K_t:
-                    print("Key t up")
-                    stop_enemy_fighters()
-                if event.key == pygame.K_a:
-                    print("Key a up")
-                    stop_alliance_radio_with_random_delays()
+        if event.type == pygame.KEYUP:
+            print("keyboard KEYUP")
+            if event.key == pygame.K_r:
+                print("Key r up")
+                stop_r2_with_random_delays()
+            if event.key == pygame.K_t:
+                print("Key t up")
+                stop_enemy_fighters()
+            if event.key == pygame.K_a:
+                print("Key a up")
+                stop_alliance_radio_with_random_delays()
 
         # HANDLE JOYSTICK EVENTS
-            if event.type == pygame.JOYBUTTONDOWN:
-                button = event.button
-                if button == 0:
-                    fire_weapon()
-                elif button == 1:
-                    turn_on_microphone()
-                elif button == 2:
-                    select_weapon(2)
-                elif button == 3:
-                    select_weapon(3)
-                elif button == 4:  # order of weapon selection button on joy not in order
-                    select_weapon(1)
-                elif button == 5:
-                    select_weapon(4)
-                elif button == 6: #
-                    #add C3PO sounds here ***********************************
-                    print('need function here')
-                elif button == 7:
-                    play_chewy()
-                elif button == 8:
-                    toggle_music()
-                elif button == 9:
-                    play_yoda()
-                elif button == 10:
-                    #add Explosion sound here ***********************************
-                    print('need function here')
-                elif button == 11:
-                    play_r2()
-                print("Button {} on".format(button))
-            if event.type == pygame.JOYBUTTONUP:
-                button = event.button
-                if button == 1:
-                    turn_off_microphone()
-                print("Button {} off".format(button))
-            if event.type == pygame.JOYHATMOTION:
-                if event.hat == 0:
-                    print("event value hat axis 0: {}".format(event.value))
-                    play_hat()
-            if event.type == pygame.JOYAXISMOTION:
-                if event.axis == 0:
-                    #print("event value axis 0: {}".format(event.value))
-                    if event.value > 0.7:
-                        play_turn_sound()
-                    elif event.value < -0.7:
-                        play_turn_sound()
-                elif event.axis == 1:
-                    #print("event value axis 1: {}".format(event.value))
-                    #print("event value axis 0: {}".format(event.value))
-                    if event.value > 0.7:
-                        play_turn_sound()
-                    elif event.value < -0.7:
-                        play_turn_sound()
-                #elif event.axis == 2:
-                    #print("event value axis 2: {}".format(event.value))
-                elif event.axis == 3:
-                    #print("event value axis 3: {}".format(event.value))
-                    set_engine_volume()
-                    #self.verticalPosition = event.value
+        if event.type == pygame.JOYBUTTONDOWN:
+            button = event.button
+            if button == 0:
+                fire_weapon()
+            elif button == 1:
+                turn_on_microphone()
+            elif button == 2:
+                select_weapon(2)
+            elif button == 3:
+                select_weapon(3)
+            elif button == 4:  # order of weapon selection button on joy not in order
+                select_weapon(1)
+            elif button == 5:
+                select_weapon(4)
+            elif button == 6: #
+                #add C3PO sounds here ***********************************
+                print('need function here')
+            elif button == 7:
+                play_chewy()
+            elif button == 8:
+                toggle_music()
+            elif button == 9:
+                play_yoda()
+            elif button == 10:
+                #add Explosion sound here ***********************************
+                print('need function here')
+            elif button == 11:
+                play_r2()
+            print("Button {} on".format(button))
+        if event.type == pygame.JOYBUTTONUP:
+            button = event.button
+            if button == 1:
+                turn_off_microphone()
+            print("Button {} off".format(button))
+        if event.type == pygame.JOYHATMOTION:
+            if event.hat == 0:
+                print("event value hat axis 0: {}".format(event.value))
+                play_hat()
+        if event.type == pygame.JOYAXISMOTION:
+            if event.axis == 0:
+                #print("event value axis 0: {}".format(event.value))
+                if event.value > 0.7:
+                    play_turn_sound()
+                elif event.value < -0.7:
+                    play_turn_sound()
+            elif event.axis == 1:
+                #print("event value axis 1: {}".format(event.value))
+                #print("event value axis 0: {}".format(event.value))
+                if event.value > 0.7:
+                    play_turn_sound()
+                elif event.value < -0.7:
+                    play_turn_sound()
+            #elif event.axis == 2:
+                #print("event value axis 2: {}".format(event.value))
+            elif event.axis == 3:
+                #print("event value axis 3: {}".format(event.value))
+                set_engine_volume()
+                #self.verticalPosition = event.value
 
 ################################ INITIALIZE GPIO ############################
 #define GPIO Pin assignment
