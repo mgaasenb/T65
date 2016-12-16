@@ -328,7 +328,7 @@ def aux_power_switch_check(): #called from turn_aux_power_on, check switches & t
 #        GPIO.output(f6_led_gpio_pin, True)
 #        GPIO.output(f7_and_f8_led_gpio_pin, True)
     aux_power_on = True
-    led_flash_thread.stop()
+    #led_flash_thread.stop()
     print("aux power flag set to True")
 
 def turn_aux_power_off():
@@ -343,11 +343,12 @@ def turn_aux_power_off():
         timer_task = aux_mode_timer_dict[key]
         timer_task.cancel()
     pygame.mixer.stop()  #stop all sound
-    # if Engine started, play stop engine sound
+    # if Engine started, play stop engine sound   #Removed to fix issue when key is turned off, Aux Power sequence should happen (Test and then remove perminently)
     if engine_started:
         print("engine was started, so call stop engine")
         stop_engine("aux_off")
-    elif master_lock_unlocked:
+    else:
+    #elif master_lock_unlocked:
         print("engine wasn't started but key is on so play aux_power_off sound")
         start_engine_channel.play(aux_power_off_sound)
     if running_on_pi:
@@ -1087,7 +1088,7 @@ if running_on_pi:
     else:
         landing_gear_down = True
     print ("Landing Gear Down = ", landing_gear_down)
-    if not GPIO.input(arm_weapons_gpio_pin):
+    if GPIO.input(arm_weapons_gpio_pin):
         weapons_armed = True
     else:
         weapons_armed = False
