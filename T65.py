@@ -143,29 +143,30 @@ class led_flash_thread_class(Thread):
                 #add a check before each new section of start up... to see if Still in Aux Power on... test by stopping Aux power part way through...
                 GPIO.output(f1_led_gpio_pin, True)
                 GPIO.output(f2_led_gpio_pin, True)
-                time.sleep(.5)
+                time.sleep(.2)
                 GPIO.output(f1_led_gpio_pin, False)
                 GPIO.output(f2_led_gpio_pin, False)
-                time.sleep(.5)
+                time.sleep(.2)
                 if self.aux_power_sequence: #flash a second time
                     GPIO.output(f3_led_gpio_pin, True)
                     GPIO.output(f4_led_gpio_pin, True)
-                    time.sleep(.5)
+                    time.sleep(.2)
                     GPIO.output(f3_led_gpio_pin, False)
                     GPIO.output(f4_led_gpio_pin, False)
-                    time.sleep(.5)
+                    time.sleep(.2)
                     if self.aux_power_sequence:  # flash a second time
+                        GPIO.output(shared_led_power_gpio_pin, True)
                         GPIO.output(f5_led_gpio_pin, True)
                         GPIO.output(f6_led_gpio_pin, True)
-                        time.sleep(.5)
+                        time.sleep(.2)
                         GPIO.output(f5_led_gpio_pin, False)
                         GPIO.output(f6_led_gpio_pin, False)
-                        time.sleep(.5)
+                        time.sleep(.2)
                         if self.aux_power_sequence:  # flash a second time
                             GPIO.output(f7_and_f8_led_gpio_pin, True)
-                            time.sleep(.5)
+                            time.sleep(.2)
                             GPIO.output(f7_and_f8_led_gpio_pin, False)
-                            time.sleep(.5)
+                            time.sleep(.2)
                             if self.aux_power_sequence:  # flash a second time
                                 GPIO.output(shared_led_power_gpio_pin, True)
                                 GPIO.output(f1_led_gpio_pin, True)
@@ -175,8 +176,8 @@ class led_flash_thread_class(Thread):
                                 GPIO.output(f5_led_gpio_pin, True)
                                 GPIO.output(f6_led_gpio_pin, True)
                                 GPIO.output(f7_and_f8_led_gpio_pin, True)
-                                time.sleep(.5)
-                                GPIO.output(shared_led_power_gpio_pin, True)
+                                time.sleep(.2)
+                                GPIO.output(shared_led_power_gpio_pin, False)
                                 GPIO.output(f1_led_gpio_pin, False)
                                 GPIO.output(f2_led_gpio_pin, False)
                                 GPIO.output(f3_led_gpio_pin, False)
@@ -184,7 +185,7 @@ class led_flash_thread_class(Thread):
                                 GPIO.output(f5_led_gpio_pin, False)
                                 GPIO.output(f6_led_gpio_pin, False)
                                 GPIO.output(f7_and_f8_led_gpio_pin, False)
-                                time.sleep(.5)
+                                time.sleep(.2)
                                 GPIO.output(shared_led_power_gpio_pin, True)
                                 GPIO.output(f1_led_gpio_pin, True)
                                 GPIO.output(f2_led_gpio_pin,True)
@@ -194,8 +195,8 @@ class led_flash_thread_class(Thread):
                                 GPIO.output(f6_led_gpio_pin, True)
                                 GPIO.output(f7_and_f8_led_gpio_pin, True)
                 self.aux_power_sequence = False #stop this portion of while statement from continuing..
-            if self.aux_power_off_sequence:
-                print("start the LED light sequence for when aux_power is turned off, flash the lights twice...")
+            #if self.aux_power_off_sequence:
+            #    print("start the LED light sequence for when aux_power is turned off, flash the lights twice...")
     #************** add LED sequence for off ***********************
             elif self._flash_start_button_led:
                 GPIO.output(engine_start_led_gpio_pin, True)
@@ -231,6 +232,9 @@ class led_flash_thread_class(Thread):
         self._list_of_pins.remove(element)
         print("after remove, my list contains", self._list_of_pins)
 
+    def stop(self):
+        self._keepgoing = False
+
     def kill(self):
         self._keepgoing = False
         if running_on_pi:
@@ -244,6 +248,8 @@ class led_flash_thread_class(Thread):
             GPIO.output(f7_and_f8_led_gpio_pin, False)
 
 led_flash_thread = led_flash_thread_class()  # this needs to be initialized... not sure where
+led_flash_thread.start()
+
 #led_flash_thread.start()
 #led_flash_thread.add_to_list(21)
 #led_flash_thread.add_to_list(22)
@@ -322,6 +328,7 @@ def aux_power_switch_check(): #called from turn_aux_power_on, check switches & t
 #        GPIO.output(f6_led_gpio_pin, True)
 #        GPIO.output(f7_and_f8_led_gpio_pin, True)
     aux_power_on = True
+    led_flash_thread.stop()
     print("aux power flag set to True")
 
 def turn_aux_power_off():
@@ -803,13 +810,13 @@ def read_joystick_gpio_and_keyboard():
         #Feature here
 
     # HANDLE KEYBOARD EVENTS
-    if not running_on_pi:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                led_flash_thread.kill()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
+#    if running_on_pi:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            led_flash_thread.kill()
+            sys.exit()
+        if event.type == pygame.KEYDOWN:
                 print("keyboard KEYDOWN")
                 if event.key == pygame.K_s:
                     print("Key s down")
@@ -915,64 +922,64 @@ def read_joystick_gpio_and_keyboard():
                     stop_alliance_radio_with_random_delays()
 
         # HANDLE JOYSTICK EVENTS
-        if event.type == pygame.JOYBUTTONDOWN:
-            button = event.button
-            if button == 0:
-                fire_weapon()
-            elif button == 1:
-                turn_on_microphone()
-            elif button == 2:
-                select_weapon(2)
-            elif button == 3:
-                select_weapon(3)
-            elif button == 4:  # order of weapon selection button on joy not in order
-                select_weapon(1)
-            elif button == 5:
-                select_weapon(4)
-            elif button == 6: #
-                #add C3PO sounds here ***********************************
-                print('need function here')
-            elif button == 7:
-                play_chewy()
-            elif button == 8:
-                toggle_music()
-            elif button == 9:
-                play_yoda()
-            elif button == 10:
-                #add Explosion sound here ***********************************
-                print('need function here')
-            elif button == 11:
-                play_r2()
-            print("Button {} on".format(button))
-        if event.type == pygame.JOYBUTTONUP:
-            button = event.button
-            if button == 1:
-                turn_off_microphone()
-            print("Button {} off".format(button))
-        if event.type == pygame.JOYHATMOTION:
-            if event.hat == 0:
-                print("event value hat axis 0: {}".format(event.value))
-                play_hat()
-        if event.type == pygame.JOYAXISMOTION:
-            if event.axis == 0:
-                #print("event value axis 0: {}".format(event.value))
-                if event.value > 0.7:
-                    play_turn_sound()
-                elif event.value < -0.7:
-                    play_turn_sound()
-            elif event.axis == 1:
-                #print("event value axis 1: {}".format(event.value))
-                #print("event value axis 0: {}".format(event.value))
-                if event.value > 0.7:
-                    play_turn_sound()
-                elif event.value < -0.7:
-                    play_turn_sound()
-            #elif event.axis == 2:
-                #print("event value axis 2: {}".format(event.value))
-            elif event.axis == 3:
-                #print("event value axis 3: {}".format(event.value))
-                set_engine_volume()
-                #self.verticalPosition = event.value
+            if event.type == pygame.JOYBUTTONDOWN:
+                button = event.button
+                if button == 0:
+                    fire_weapon()
+                elif button == 1:
+                    turn_on_microphone()
+                elif button == 2:
+                    select_weapon(2)
+                elif button == 3:
+                    select_weapon(3)
+                elif button == 4:  # order of weapon selection button on joy not in order
+                    select_weapon(1)
+                elif button == 5:
+                    select_weapon(4)
+                elif button == 6: #
+                    #add C3PO sounds here ***********************************
+                    print('need function here')
+                elif button == 7:
+                    play_chewy()
+                elif button == 8:
+                    toggle_music()
+                elif button == 9:
+                    play_yoda()
+                elif button == 10:
+                    #add Explosion sound here ***********************************
+                    print('need function here')
+                elif button == 11:
+                    play_r2()
+                print("Button {} on".format(button))
+            if event.type == pygame.JOYBUTTONUP:
+                button = event.button
+                if button == 1:
+                    turn_off_microphone()
+                print("Button {} off".format(button))
+            if event.type == pygame.JOYHATMOTION:
+                if event.hat == 0:
+                    print("event value hat axis 0: {}".format(event.value))
+                    play_hat()
+            if event.type == pygame.JOYAXISMOTION:
+                if event.axis == 0:
+                    #print("event value axis 0: {}".format(event.value))
+                    if event.value > 0.7:
+                        play_turn_sound()
+                    elif event.value < -0.7:
+                        play_turn_sound()
+                elif event.axis == 1:
+                    #print("event value axis 1: {}".format(event.value))
+                    #print("event value axis 0: {}".format(event.value))
+                    if event.value > 0.7:
+                        play_turn_sound()
+                    elif event.value < -0.7:
+                        play_turn_sound()
+                #elif event.axis == 2:
+                    #print("event value axis 2: {}".format(event.value))
+                elif event.axis == 3:
+                    #print("event value axis 3: {}".format(event.value))
+                    set_engine_volume()
+                    #self.verticalPosition = event.value
 
 ################################ INITIALIZE GPIO ############################
 #define GPIO Pin assignment
@@ -1090,7 +1097,7 @@ if running_on_pi:
     else:
         r2_radio_on= False
     print("R2 Radio on = ", r2_radio_on)
-    if not GPIO.input(alliance_radio_gpio_pin)
+    if not GPIO.input(alliance_radio_gpio_pin):
         alliance_radio_on = True
     else:
         alliance_radio_on = False
