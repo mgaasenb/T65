@@ -21,10 +21,11 @@ from threading import Thread
 
 
 # Initiate Global Flags & States
-aux_mode_timer_dict = dict() 
+running_on_pi= False
+aux_mode_timer_dict = dict()
 power_mode_timer_dict = dict() 
 timeElapsed = 0 #used for random delays
-master_lock_on = True
+master_lock_unlocked = True
 aux_power_on = False
 main_power_on = False
 engine_started = False
@@ -32,21 +33,23 @@ weapons_armed = False
 landing_gear_down = True
 weapon_selected = 1
 foil_position_closed = True
+r2_radio_on = False
+alliance_radio_on = False
 
+
+#check if running on Raspberry Pi
+if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop
+    running_on_pi = True
 
 # Initiate display window, required to collect key board input
-#os.environ['SDL_VIDEODRIVER'] = 'dummy'
-screen = pygame.display.set_mode((1, 1))
-
-game_display = pygame.display.set_mode((800, 600))
-
-#xwing_image = pygame.image.load('xwing.png')
-
-pygame.display.set_caption('T-65 Simulator')
-game_display.fill((0,0,0)) 
-
-#sys_font = pygame.font.SysFont("monospace",30)  #need a font file
-#game_display.blit(xwing_image,(350,300))
+if running_on_pi:
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
+    pygame.display.set_mode((1, 1))
+else:
+    screen = pygame.display.set_mode((1, 1))
+    game_display = pygame.display.set_mode((800, 600))
+    pygame.display.set_caption('T-65 Simulator')
+    game_display.fill((0,0,0))
 
 # initiate sound mixer
 pygame.mixer.pre_init(44100, -16, 2, 2048) # setup mixer to avoid sound lag (try reducing/increasing last number default is 3072)
@@ -98,7 +101,7 @@ landing_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/landing.wav')
 # load groups of sound files
 r2_sound_files = glob.glob("/home/pi/git/T65/sounds/r2d2_*.wav")
 chewy_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_chew*.wav")
-radio_sound_files = glob.glob("/home/pi/git/T65/sounds/radio_*.wav")
+alliance_radio_sound_files = glob.glob("/home/pi/git/T65/sounds/radio_*.wav")
 yoda_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_yod*.wav")
 tie_fighter_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_xwtie*.wav")
 music_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_msc*.wav")
@@ -112,7 +115,7 @@ pygame.mixer.set_reserved(1)
 music_channel = pygame.mixer.Channel(10)
 pygame.mixer.set_reserved(10)
 r2_channel = pygame.mixer.Channel(2) 
-radio_channel = pygame.mixer.Channel(3)
+alliance_radio_channel = pygame.mixer.Channel(3)
 tie_fighter_channel = pygame.mixer.Channel(4)
 yoda_channel = pygame.mixer.Channel(5)
 chewy_channel = pygame.mixer.Channel(6)
@@ -126,7 +129,7 @@ class led_flash_thread_class(Thread):
     def __init__(self):
         super(led_flash_thread_class, self).__init__()
         self._keepgoing = True
-        self._flashLED = False
+        self._flash_start_button_led = False
         self.aux_power_sequence = False
         self._list_of_pins =  []
 
@@ -145,29 +148,67 @@ class led_flash_thread_class(Thread):
                 GPIO.output(f2_led_gpio_pin, False)
                 time.sleep(.5)
                 if self.aux_power_sequence: #flash a second time
-                    GPIO.output(f1_led_gpio_pin, True)
-                    GPIO.output(f2_led_gpio_pin, True)
+                    GPIO.output(f3_led_gpio_pin, True)
+                    GPIO.output(f4_led_gpio_pin, True)
                     time.sleep(.5)
-                    GPIO.output(f1_led_gpio_pin, False)
-                    GPIO.output(f2_led_gpio_pin, False)
+                    GPIO.output(f3_led_gpio_pin, False)
+                    GPIO.output(f4_led_gpio_pin, False)
                     time.sleep(.5)
+                    if self.aux_power_sequence:  # flash a second time
+                        GPIO.output(f5_led_gpio_pin, True)
+                        GPIO.output(f6_led_gpio_pin, True)
+                        time.sleep(.5)
+                        GPIO.output(f5_led_gpio_pin, False)
+                        GPIO.output(f6_led_gpio_pin, False)
+                        time.sleep(.5)
+                        if self.aux_power_sequence:  # flash a second time
+                            GPIO.output(f7_and_f8_led_gpio_pin, True)
+                            time.sleep(.5)
+                            GPIO.output(f7_and_f8_led_gpio_pin, False)
+                            time.sleep(.5)
+                            if self.aux_power_sequence:  # flash a second time
+                                GPIO.output(shared_led_power_gpio_pin, True)
+                                GPIO.output(f1_led_gpio_pin, True)
+                                GPIO.output(f2_led_gpio_pin, True)
+                                GPIO.output(f3_led_gpio_pin, True)
+                                GPIO.output(f4_led_gpio_pin, True)
+                                GPIO.output(f5_led_gpio_pin, True)
+                                GPIO.output(f6_led_gpio_pin, True)
+                                GPIO.output(f7_and_f8_led_gpio_pin, True)
+                                time.sleep(.5)
+                                GPIO.output(shared_led_power_gpio_pin, True)
+                                GPIO.output(f1_led_gpio_pin, False)
+                                GPIO.output(f2_led_gpio_pin, False)
+                                GPIO.output(f3_led_gpio_pin, False)
+                                GPIO.output(f4_led_gpio_pin, False)
+                                GPIO.output(f5_led_gpio_pin, False)
+                                GPIO.output(f6_led_gpio_pin, False)
+                                GPIO.output(f7_and_f8_led_gpio_pin, False)
+                                time.sleep(.5)
+                                GPIO.output(shared_led_power_gpio_pin, True)
+                                GPIO.output(f1_led_gpio_pin, True)
+                                GPIO.output(f2_led_gpio_pin,True)
+                                GPIO.output(f3_led_gpio_pin, True)
+                                GPIO.output(f4_led_gpio_pin, True)
+                                GPIO.output(f5_led_gpio_pin, True)
+                                GPIO.output(f6_led_gpio_pin, True)
+                                GPIO.output(f7_and_f8_led_gpio_pin, True)
                 self.aux_power_sequence = False #stop this portion of while statement from continuing..
             if self.aux_power_off_sequence:
                 print("start the LED light sequence for when aux_power is turned off, flash the lights twice...")
     #************** add LED sequence for off ***********************
-            elif self._flashLED:
+            elif self._flash_start_button_led:
                 GPIO.output(engine_start_led_gpio_pin, True)
                 time.sleep(.5)
-                GPIO.output(27, False)
+                GPIO.output(engine_start_led_gpio_pin, False)
                 time.sleep(.5)
 
-    def stopflash(self):    #Used for LED Test
-        self._flashLED = False
-#        GPIO.output(27, False)
-        print("led_flash_thread_class-stopflash called")
+    def stop_flash_start_button(self):    #Used for LED Test
+        self._flash_start_button_led = False
+#       print("led_flash_thread_class-stop_flash_start_button called")
 
-    def startflash(self):
-        self._flashLED = True
+    def start_flash_start_button(self):
+        self._flash_start_button_led = True
         print("led_flash_thread_class-flash called")
 
     def start_aux_power_sequence(self):
@@ -192,10 +233,17 @@ class led_flash_thread_class(Thread):
 
     def kill(self):
         self._keepgoing = False
-        GPIO.output(27, False)
+        if running_on_pi:
+            GPIO.output(shared_led_power_gpio_pin, False)
+            GPIO.output(f1_led_gpio_pin, False)
+            GPIO.output(f2_led_gpio_pin, False)
+            GPIO.output(f3_led_gpio_pin, False)
+            GPIO.output(f4_led_gpio_pin, False)
+            GPIO.output(f5_led_gpio_pin, False)
+            GPIO.output(f6_led_gpio_pin, False)
+            GPIO.output(f7_and_f8_led_gpio_pin, False)
 
-
-#led_flash_thread = led_flash_thread_class()  # this needs to be initialized... not sure where
+led_flash_thread = led_flash_thread_class()  # this needs to be initialized... not sure where
 #led_flash_thread.start()
 #led_flash_thread.add_to_list(21)
 #led_flash_thread.add_to_list(22)
@@ -203,17 +251,15 @@ class led_flash_thread_class(Thread):
 #led_flash_thread.remove_from_list(22)
 #led_flash_thread.print_list()
 ################################ END OF FLASHY LIGHT SAMPLE CODE ############################
-
-
 # TO CALL FLASHY LIGHT CODE
 #    if running_on_pi:
 #        if gpio_27_flag:
-#            led_flash_thread.stopflash()
+#            led_flash_thread.stop_flash_start_button()
 #            gpio_27_flag = False
 #        else:
 #            gpio_27_flag = True
 #            # GPIO.output(27,gpio_27_flag)
-#            led_flash_thread.startflash()
+#            led_flash_thread.start_flash_start_button()
 
 #led_flash_tread.starter_begin_flash()
 
@@ -222,9 +268,9 @@ class led_flash_thread_class(Thread):
 ################################ GAME FUNCTIONS ############################
 
 def unlock():
-    global master_lock_on
+    global master_lock_unlocked
 
-    master_lock_on = True
+    master_lock_unlocked = True
     print("Master key is ON")
     #check if aux power switch is on position, if so turn on aux_power
     if  aux_power_on: #Aux on
@@ -232,9 +278,9 @@ def unlock():
         turn_aux_power_on()
 
 def lock():
-    global master_lock_on
+    global master_lock_unlocked
 
-    master_lock_on = False
+    master_lock_unlocked = False
     print("Master key is OFF")
     for key in aux_mode_timer_dict: #stop all timers
         print(key)
@@ -249,10 +295,10 @@ def lock():
 
 def turn_aux_power_on():  #Rename this function to turn_aux_power_on_begin and change "aux_power_switch_check" to "aux_power_on_end"
     print("aux_power_on function entered")
-    if master_lock_on:        # and not aux_power_on:  don't think i want to check if aux_power isn't on... since when key goes on, we want this logic to execute
+    if master_lock_unlocked:        # and not aux_power_on:  don't think i want to check if aux_power isn't on... since when key goes on, we want this logic to execute
         stop_music()
+        led_flash_thread.start_aux_power_sequence()
         start_engine_channel.play(aux_power_on_sound)
-        #led_flash_tread.starter_begin_flash()
         sound_length = aux_power_on_sound.get_length()
         timer_task = Timer(sound_length+0.5, aux_power_switch_check, ())  # wait till aux on sound is done, then check switches & start the appropriate sounds and set flag
         aux_mode_timer_dict['aux_power_on_TIMER'] = timer_task
@@ -266,16 +312,16 @@ def aux_power_switch_check(): #called from turn_aux_power_on, check switches & t
             play_r2_with_random_delays()
         if not GPIO.input(alliance_radio_gpio_pin): #radio is on
             print("alliance radio is in on position, call start random radio")
-            play_radio_with_random_delays()
-        GPIO.output(shared_led_power_gpio_pin, True)
-        GPIO.output(f1_led_gpio_pin, True)
-        GPIO.output(f2_led_gpio_pin, True)
-        GPIO.output(f3_led_gpio_pin, True)
-        GPIO.output(f4_led_gpio_pin, True)
-        GPIO.output(f5_led_gpio_pin, True)
-        GPIO.output(f6_led_gpio_pin, True)
-        GPIO.output(f7_and_f8_led_gpio_pin, True)
-        aux_power_on = True
+            play_alliance_radio_with_random_delays()
+#        GPIO.output(shared_led_power_gpio_pin, True)
+#        GPIO.output(f1_led_gpio_pin, True)
+#        GPIO.output(f2_led_gpio_pin, True)
+#        GPIO.output(f3_led_gpio_pin, True)
+#        GPIO.output(f4_led_gpio_pin, True)
+#        GPIO.output(f5_led_gpio_pin, True)
+#        GPIO.output(f6_led_gpio_pin, True)
+#        GPIO.output(f7_and_f8_led_gpio_pin, True)
+    aux_power_on = True
     print("aux power flag set to True")
 
 def turn_aux_power_off():
@@ -294,18 +340,23 @@ def turn_aux_power_off():
     if engine_started:
         print("engine was started, so call stop engine")
         stop_engine("aux_off")
-    elif master_lock_on:
+    elif master_lock_unlocked:
         print("engine wasn't started but key is on so play aux_power_off sound")
         start_engine_channel.play(aux_power_off_sound)
     if running_on_pi:
-        GPIO.output(shared_led_power_gpio_pin, False)
-        GPIO.output(f1_led_gpio_pin, False)
-        GPIO.output(f2_led_gpio_pin, False)
-        GPIO.output(f3_led_gpio_pin, False)
-        GPIO.output(f4_led_gpio_pin, False)
+        led_flash_thread.stop_aux_power_sequence()
+        GPIO.output(f7_and_f8_led_gpio_pin, False)
+        time.sleep(.3)
         GPIO.output(f5_led_gpio_pin, False)
         GPIO.output(f6_led_gpio_pin, False)
-        GPIO.output(f7_and_f8_led_gpio_pin, False)
+        time.sleep(.3)
+        GPIO.output(f3_led_gpio_pin, False)
+        GPIO.output(f4_led_gpio_pin, False)
+        time.sleep(.3)
+        GPIO.output(f1_led_gpio_pin, False)
+        GPIO.output(f2_led_gpio_pin, False)
+        time.sleep(.3)
+        GPIO.output(shared_led_power_gpio_pin, False)
     aux_power_on = False
 
 
@@ -313,7 +364,7 @@ def start_engine():
     global engine_started
 
     print("start_engine func. called")
-    if not engine_started and aux_power_on and master_lock_on:
+    if not engine_started and aux_power_on and master_lock_unlocked:
         if not start_engine_channel.get_busy():
             start_engine_channel.play(start_engine_sound, maxtime=4500)
             set_engine_volume()
@@ -387,7 +438,9 @@ def stop_music():
 def play_r2_with_random_delays():
     global aux_mode_timer_dict
     global timeElapsed
+    global r2_radio_on
 
+    r2_radio_on = True
     play_r2() #calls function to play Random R2 sounds
     delay = randint(2,10);
     timeElapsed += delay
@@ -397,6 +450,9 @@ def play_r2_with_random_delays():
     timer_task.start()  # Start Timer Task
 
 def stop_r2_with_random_delays(): #turn off Random R2 sounds
+    global r2_radio_on
+
+    r2_radio_on = False
     timer_task = aux_mode_timer_dict['RANDOM_R2_SOUNDS_TIMER']
     timer_task.cancel()
 
@@ -409,30 +465,35 @@ def play_r2():
             r2d2sound1 = pygame.mixer.Sound(soundwav)
             r2_channel.play(r2d2sound1)
 
-def play_radio_with_random_delays():
+def play_alliance_radio_with_random_delays():
     global aux_mode_timer_dict
     global timeElapsed
+    global alliance_radio_on
 
+    alliance_radio_on = True
     play_radio() #calls function to play Random radio sounds
     delay = randint(1,3);  # Calculate Delay
     timeElapsed += delay
-    print(': play_radio_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
-    timer_task = Timer(delay, play_radio_with_random_delays, ())  # Create New Timer Task
-    aux_mode_timer_dict['RANDOM_radio_SOUNDS_TIMER'] = timer_task  # Start Timer Task
+    print(': play_alliance_radio_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
+    timer_task = Timer(delay, play_alliance_radio_with_random_delays, ())  # Create New Timer Task
+    aux_mode_timer_dict['RANDOM_alliance_radio_SOUNDS_TIMER'] = timer_task  # Start Timer Task
     timer_task.start()
 
-def stop_radio_with_random_delays(): #turn off Random radio sounds
-    timer_task = aux_mode_timer_dict['RANDOM_radio_SOUNDS_TIMER']
+def stop_alliance_radio_with_random_delays(): #turn off Random radio sounds
+    global alliance_radio_on
+
+    timer_task = aux_mode_timer_dict['RANDOM_alliance_radio_SOUNDS_TIMER']
     timer_task.cancel()
+    alliance_radio_on = False
 
 def play_radio():
     print('play_radio function entered.')
     if aux_power_on:
-        if not radio_channel.get_busy():
+        if not alliance_radio_channel.get_busy():
             print("not busy")
-            soundwav = random.choice(radio_sound_files)
+            soundwav = random.choice(alliance_radio_sound_files)
             radiosound1 = pygame.mixer.Sound(soundwav)
-            radio_channel.play(radiosound1)
+            alliance_radio_channel.play(radiosound1)
 
 def play_yoda():
     print('play_yoda function entered.')
@@ -638,55 +699,79 @@ def read_joystick_gpio_and_keyboard():
     if GPIO.event_detected(master_lock_gpio_pin):
         time.sleep(0.05)
         print("GPIO MasterLock:", GPIO.input(master_lock_gpio_pin))
-        if GPIO.input(master_lock_gpio_pin):
+        #check if the value really changed or if it was a false event and ignore
+        if GPIO.input(master_lock_gpio_pin) and master_lock_unlocked:  #GPIO TRUE means it is in LOCKED position
+            print("master lock flag was on, and now has changed to off, so call Lock function")
             lock()
-        else:
+        elif not GPIO.input(master_lock_gpio_pin) and not master_lock_unlocked:
+            print("master_lock_unlocked flag was True, and now pin reads unlock, so call unLock function")
             unlock()
+        else:
+            print("False master lock event, GPIO Pin value still same as flag value, do nothing")
+
     if GPIO.event_detected(aux_power_gpio_pin):
         time.sleep(0.02) 
         print("GPIO Aux Power:", GPIO.input(aux_power_gpio_pin))
-        if GPIO.input(aux_power_gpio_pin):
+        #check if really changed or if it was a false event in which case ignore
+        if GPIO.input(aux_power_gpio_pin) and not aux_power_on:
             turn_aux_power_on()
-        else:
+        elif not GPIO.input(aux_power_gpio_pin) and aux_power_on:
             turn_aux_power_off()
+        else:
+            print("False aux_power event, GPIO Pin value still same as flag value, do nothing")
     if GPIO.event_detected(engine_start_gpio_pin):
         print("Start Button Pressed")
         start_engine()
     if GPIO.event_detected(foil_gpio_pin):
         time.sleep(0.02)
         print("GPIO Foil Event:", GPIO.input(foil_gpio_pin))
-        if GPIO.input(foil_gpio_pin):
+        #check if real event or false bounce
+        if GPIO.input(foil_gpio_pin) and foil_position_closed:
             open_foil()
-        else:
+        elif not GPIO.input(foil_gpio_pin) and not foil_position_closed:
             close_foil()
+        else:
+            print("False foil event, GPIO Pin value still same as flag value, do nothing")
     if GPIO.event_detected(landing_gear_gpio_pin):
         time.sleep(0.02)
         print("GPIO Landing Gear:", GPIO.input(landing_gear_gpio_pin))
-        if GPIO.input(landing_gear_gpio_pin):
+        #check if real or false bounce
+        if GPIO.input(landing_gear_gpio_pin) and landing_gear_down:
             raise_landing_gear()
-        else:
+        elif not GPIO.input(landing_gear_gpio_pin) and not landing_gear_down:
             lower_landing_gear()
+        else:
+            print("False landing gear event, GPIO Pin value still same as flag value, do nothing")
     if GPIO.event_detected(r2_radio_gpio_pin):
         time.sleep(0.02)
         print("GPIO R2 Radio:", GPIO.input(r2_radio_gpio_pin))
-        if not GPIO.input(r2_radio_gpio_pin):
+        #check if real or false bounce
+        if not GPIO.input(r2_radio_gpio_pin) and not r2_radio_on:
             play_r2_with_random_delays()
-        else:
+        if GPIO.input(r2_radio_gpio_pin) and r2_radio_on:
             stop_r2_with_random_delays()
+        else:
+            print("False R2 radio event, GPIO Pin value still same as flag value, do nothing")
     if GPIO.event_detected(alliance_radio_gpio_pin):
         time.sleep(0.02)
         print("GPIO Alliance Radio:", GPIO.input(alliance_radio_gpio_pin))
-        if not GPIO.input(alliance_radio_gpio_pin):
-            play_radio_with_random_delays()
+        #check if real or ralse bounce
+        if not GPIO.input(alliance_radio_gpio_pin) and not alliance_radio_on:
+            play_alliance_radio_with_random_delays()
+        if GPIO.input(alliance_radio_gpio_pin) and alliance_radio_on:
+            stop_alliance_radio_with_random_delays()
         else:
-            stop_radio_with_random_delays()
+            print("False alliance radio event, GPIO Pin value still same as flag value, do nothing")
     if GPIO.event_detected(arm_weapons_gpio_pin):
         time.sleep(0.02)
         print("GPIO Weapons Armed :", GPIO.input(arm_weapons_gpio_pin))
-        if not GPIO.input(arm_weapons_gpio_pin):
+        #check for false bounce event
+        if not GPIO.input(arm_weapons_gpio_pin) and not weapons_armed:
             arm_weapons()
-        else:
+        elif GPIO.input(arm_weapons_gpio_pin) and weapons_armed:
             disarm_weapons()
+        else:
+            print("False arm weapons event, GPIO Pin value still same as flag value, do nothing")
     if GPIO.event_detected(hyperdrive_gpio_pin):
         print("Hyperdrive Button Pressed")
         engage_hyperdrive()
@@ -718,115 +803,116 @@ def read_joystick_gpio_and_keyboard():
         #Feature here
 
     # HANDLE KEYBOARD EVENTS
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            led_flash_thread.kill()
-            sys.exit()
-        if event.type == pygame.KEYDOWN:
-            print("keyboard KEYDOWN")
-            if event.key == pygame.K_s:
-                print("Key s down")
-                start_engine()
-            if event.key == pygame.K_F1:
-                print("Key F1 down")
-                play_yoda()
-            if event.key == pygame.K_F2:
-                print("Key F2 down")
-                play_chewy()
-            if event.key == pygame.K_F3:
-                print("Key F3 down")
-                turn_on_microphone()
-            if event.key == pygame.K_F4:
-                print("Key F4 down")
-                turn_off_microphone()
-            if event.key == pygame.K_F5:
-                print("Key F5 down")
-                land_xwing()
-            if event.key == pygame.K_F6:
-                print("Key F6 down")
-                error_sound.play()
-            if event.key == pygame.K_F7:
-                print("Key F7 down")
-                landing_sound.play()
-            if event.key == pygame.K_F8:
-                print("Key F8 down")
-                error_sound.play()
-            elif event.key == pygame.K_1:
-                print("Key 1 down")
-                select_weapon(1)
-            elif event.key == pygame.K_2:
-                print("Key 2 down")
-                select_weapon(2)
-            elif event.key == pygame.K_3:
-                print("Key 3 down")
-                select_weapon(3)
-            elif event.key == pygame.K_4:
-                print("Key 4 down")
-                select_weapon(4)
-            elif event.key == pygame.K_r:
-                print("Key r down")
-                play_r2_with_random_delays()
-            elif event.key == pygame.K_t:
-                print("Key t down")
-                start_enemy_fighters()
-            elif event.key == pygame.K_k:
-                print("Key k down")
-                unlock()
-            elif event.key == pygame.K_l:
-                print("Key l down")
-                lock()
-            elif event.key == pygame.K_m:
-                print("Key m down")
-                toggle_music()
-            elif event.key == pygame.K_i:
-                print("Key i down")
-                turn_aux_power_on()
-            elif event.key == pygame.K_o:
-                print("Key o down")
-                turn_aux_power_off()
-            elif event.key == pygame.K_a:
-                print("Key a down")
-                play_radio_with_random_delays()
-            elif event.key == pygame.K_g:
-                print("Key g down")
-                if landing_gear_down:
-                    raise_landing_gear()
-                else:
-                    lower_landing_gear()
-            elif event.key == pygame.K_h:
-                print("Key h down")
-                engage_hyperdrive()
-            elif event.key == pygame.K_w:
-                print("Key w down")
-                if weapons_armed:
-                    disarm_weapons()
-                else:
-                    arm_weapons()
-            elif event.key == pygame.K_SPACE:
-                print("Key SPACE down")
-                fire_weapon()
-            elif event.key == pygame.K_f:
-                print("Key f down")
-                if foil_position_closed:
-                    open_foil()
-                else:
-                    close_foil()
-            elif event.key == pygame.K_q:
+    if not running_on_pi:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
                 pygame.quit()
-                led_flash_thread.kill() # this causes an error on x86 because no GPIO
+                led_flash_thread.kill()
                 sys.exit()
-        if event.type == pygame.KEYUP:
-            print("keyboard KEYUP")
-            if event.key == pygame.K_r:
-                print("Key r up")
-                stop_r2_with_random_delays()
-            if event.key == pygame.K_t:
-                print("Key t up")
-                stop_enemy_fighters()
-            if event.key == pygame.K_a:
-                print("Key a up")
-                stop_radio_with_random_delays()
+            if event.type == pygame.KEYDOWN:
+                print("keyboard KEYDOWN")
+                if event.key == pygame.K_s:
+                    print("Key s down")
+                    start_engine()
+                if event.key == pygame.K_F1:
+                    print("Key F1 down")
+                    play_yoda()
+                if event.key == pygame.K_F2:
+                    print("Key F2 down")
+                    play_chewy()
+                if event.key == pygame.K_F3:
+                    print("Key F3 down")
+                    turn_on_microphone()
+                if event.key == pygame.K_F4:
+                    print("Key F4 down")
+                    turn_off_microphone()
+                if event.key == pygame.K_F5:
+                    print("Key F5 down")
+                    land_xwing()
+                if event.key == pygame.K_F6:
+                    print("Key F6 down")
+                    error_sound.play()
+                if event.key == pygame.K_F7:
+                    print("Key F7 down")
+                    landing_sound.play()
+                if event.key == pygame.K_F8:
+                    print("Key F8 down")
+                    error_sound.play()
+                elif event.key == pygame.K_1:
+                    print("Key 1 down")
+                    select_weapon(1)
+                elif event.key == pygame.K_2:
+                    print("Key 2 down")
+                    select_weapon(2)
+                elif event.key == pygame.K_3:
+                    print("Key 3 down")
+                    select_weapon(3)
+                elif event.key == pygame.K_4:
+                    print("Key 4 down")
+                    select_weapon(4)
+                elif event.key == pygame.K_r:
+                    print("Key r down")
+                    play_r2_with_random_delays()
+                elif event.key == pygame.K_t:
+                    print("Key t down")
+                    start_enemy_fighters()
+                elif event.key == pygame.K_k:
+                    print("Key k down")
+                    unlock()
+                elif event.key == pygame.K_l:
+                    print("Key l down")
+                    lock()
+                elif event.key == pygame.K_m:
+                    print("Key m down")
+                    toggle_music()
+                elif event.key == pygame.K_i:
+                    print("Key i down")
+                    turn_aux_power_on()
+                elif event.key == pygame.K_o:
+                    print("Key o down")
+                    turn_aux_power_off()
+                elif event.key == pygame.K_a:
+                    print("Key a down")
+                    play_alliance_radio_with_random_delays()
+                elif event.key == pygame.K_g:
+                    print("Key g down")
+                    if landing_gear_down:
+                        raise_landing_gear()
+                    else:
+                        lower_landing_gear()
+                elif event.key == pygame.K_h:
+                    print("Key h down")
+                    engage_hyperdrive()
+                elif event.key == pygame.K_w:
+                    print("Key w down")
+                    if weapons_armed:
+                        disarm_weapons()
+                    else:
+                        arm_weapons()
+                elif event.key == pygame.K_SPACE:
+                    print("Key SPACE down")
+                    fire_weapon()
+                elif event.key == pygame.K_f:
+                    print("Key f down")
+                    if foil_position_closed:
+                        open_foil()
+                    else:
+                        close_foil()
+                elif event.key == pygame.K_q:
+                    pygame.quit()
+                    led_flash_thread.kill() # this causes an error on x86 because no GPIO
+                    sys.exit()
+            if event.type == pygame.KEYUP:
+                print("keyboard KEYUP")
+                if event.key == pygame.K_r:
+                    print("Key r up")
+                    stop_r2_with_random_delays()
+                if event.key == pygame.K_t:
+                    print("Key t up")
+                    stop_enemy_fighters()
+                if event.key == pygame.K_a:
+                    print("Key a up")
+                    stop_alliance_radio_with_random_delays()
 
         # HANDLE JOYSTICK EVENTS
         if event.type == pygame.JOYBUTTONDOWN:
@@ -919,9 +1005,7 @@ f7_and_f8_led_gpio_pin=2
 f8_button_gpio_pin=14
 # f8_led_gpio_pin=2  Shared with f7 LED Pin
 
-#check if running on Raspberry Pi
-if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' for Windows Laptop
-    running_on_pi = True
+if running_on_pi:
     import RPi.GPIO as GPIO
     GPIO.setmode(GPIO.BCM)
 
@@ -974,12 +1058,13 @@ if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' f
     GPIO.add_event_detect(f7_button_gpio_pin, GPIO.FALLING, bouncetime=400)
     GPIO.add_event_detect(f8_button_gpio_pin, GPIO.FALLING, bouncetime=400)
 
+
 # Get initial GPIO settings and set flags
-    if GPIO.input(master_lock_gpio_pin):
-        master_lock_on = True
+    if GPIO.input(master_lock_gpio_pin): #GPIO TRUE means it is in LOCKED position
+        master_lock_unlocked = False
     else:
-        master_lock_on = False
-    print("Master Lock value = ", master_lock_on)
+        master_lock_unlocked = True
+    print("Master_Lock_Unlocked = ", master_lock_unlocked)
     if GPIO.input(aux_power_gpio_pin):
         aux_power_on = True
     else:
@@ -1000,9 +1085,22 @@ if os.uname()[4][:3] == 'arm':  # means running on Pi else it will equal 'x86' f
     else:
         weapons_armed = False
     print ("Weapons armed = ", foil_position_closed)
+    if not GPIO.input(r2_radio_gpio_pin):
+        r2_radio_on = True
+    else:
+        r2_radio_on= False
+    print("R2 Radio on = ", r2_radio_on)
+    if not GPIO.input(alliance_radio_gpio_pin)
+        alliance_radio_on = True
+    else:
+        alliance_radio_on = False
+    print("Alliance Radio on =",alliance_radio_on )
+
+    # START AUXPOWER IF LOCK IS OFF & AUX IS ON, this will also check & turn on radios #
+    if master_lock_unlocked and aux_power_on:
+        turn_aux_power_on()
 else:
     running_on_pi = False
-
 
 ################################ MAIN GAME LOOP ############################
 gameloop = True
