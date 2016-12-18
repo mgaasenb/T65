@@ -319,14 +319,7 @@ def aux_power_switch_check(): #called from turn_aux_power_on, check switches & t
         if not GPIO.input(alliance_radio_gpio_pin): #radio is on
             print("alliance radio is in on position, call start random radio")
             play_alliance_radio_with_random_delays()
-#        GPIO.output(shared_led_power_gpio_pin, True)
-#        GPIO.output(f1_led_gpio_pin, True)
-#        GPIO.output(f2_led_gpio_pin, True)
-#        GPIO.output(f3_led_gpio_pin, True)
-#        GPIO.output(f4_led_gpio_pin, True)
-#        GPIO.output(f5_led_gpio_pin, True)
-#        GPIO.output(f6_led_gpio_pin, True)
-#        GPIO.output(f7_and_f8_led_gpio_pin, True)
+        led_flash_thread.start_flash_start_button()
     aux_power_on = True
     #led_flash_thread.stop()
     print("aux power flag set to True")
@@ -352,6 +345,7 @@ def turn_aux_power_off():
         print("engine wasn't started but key is on so play aux_power_off sound")
         start_engine_channel.play(aux_power_off_sound)
     if running_on_pi:
+        led_flash_thread.stop_flash_start_button()
         led_flash_thread.stop_aux_power_sequence()
         GPIO.output(f7_and_f8_led_gpio_pin, False)
         time.sleep(.3)
@@ -459,7 +453,8 @@ def play_r2_with_random_delays():
 
 def stop_r2_with_random_delays(): #turn off Random R2 sounds
     global r2_radio_on
-
+    if r2_channel.get_busy():
+        r2_channel.stop()
     r2_radio_on = False
     timer_task = aux_mode_timer_dict['RANDOM_R2_SOUNDS_TIMER']
     timer_task.cancel()
@@ -490,6 +485,8 @@ def play_alliance_radio_with_random_delays():
 def stop_alliance_radio_with_random_delays(): #turn off Random radio sounds
     global alliance_radio_on
 
+    if alliance_radio_channel.get_busy():
+        alliance_radio_channel.stop()
     timer_task = aux_mode_timer_dict['RANDOM_alliance_radio_SOUNDS_TIMER']
     timer_task.cancel()
     alliance_radio_on = False
@@ -716,7 +713,6 @@ def read_joystick_gpio_and_keyboard():
             unlock()
         else:
             print("False master lock event, GPIO Pin value still same as flag value, do nothing")
-
     if GPIO.event_detected(aux_power_gpio_pin):
         time.sleep(0.02) 
         print("GPIO Aux Power:", GPIO.input(aux_power_gpio_pin))
@@ -1118,7 +1114,7 @@ if __name__ == '__main__':
     while gameloop:
         read_joystick_gpio_and_keyboard()
           # Print END PROGRAM Statement
-        #time.sleep(0.01) #adding this gives subprocesses like detecting GPIO time to do their thing, fixed delay when pressing GPIO button
+        time.sleep(0.01) #adding this gives subprocesses like detecting GPIO time to do their thing, fixed delay when pressing GPIO button
     print('END PROGRAM')
     pygame.quit() # clean exit
 
