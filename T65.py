@@ -88,7 +88,8 @@ error_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/error.wav')
 microphone_on_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/mic_static.wav')  
 hyperdrive_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/hyperdrive.wav')  
 start_engine_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/startengine.wav')
-aux_power_on_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/aux_power_on.wav')  
+fail_to_start_engine_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/fail_to_start.wav')
+aux_power_on_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/aux_power_on.wav')
 aux_power_off_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/aux_power_off.wav')
 engine_shutdown_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/engine_shutdown.wav')
 xwing_turn_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/xwing_turn.wav') 
@@ -130,6 +131,7 @@ class led_flash_thread_class(Thread):
         super(led_flash_thread_class, self).__init__()
         self._keepgoing = True
         self._flash_start_button_led = False
+        self._flash_tie_fighter_button_led = False
         self.aux_power_sequence = False
         self._list_of_pins =  []
 
@@ -203,13 +205,23 @@ class led_flash_thread_class(Thread):
                 time.sleep(.5)
                 GPIO.output(engine_start_led_gpio_pin, False)
                 time.sleep(.5)
+            elif self._flash_tie_fighter_button_led:
+                GPIO.output(f1_led_gpio_pin, True)
+                time.sleep(.2)
+                GPIO.output(f1_led_gpio_pin, False)
+                time.sleep(.2)
 
     def stop_flash_start_button(self):    #Used for LED Test
         self._flash_start_button_led = False
-#       print("led_flash_thread_class-stop_flash_start_button called")
 
     def start_flash_start_button(self):
         self._flash_start_button_led = True
+
+    def stop_flash_tie_fighter_button(self):    #Used for LED Test
+        self._flash_tie_fighter_button_led = False
+
+    def start_flash_tie_fighter_button(self):
+        self._flash_tie_fighter_button_led = True
         print("led_flash_thread_class-flash called")
 
     def start_aux_power_sequence(self):
@@ -288,15 +300,7 @@ def lock():
 
     master_lock_unlocked = False
     print("Master key is OFF")
-    for key in aux_mode_timer_dict: #stop all timers
-        print(key)
-        timer_task = aux_mode_timer_dict[key]
-        timer_task.cancel()
-    pygame.mixer.stop()  #stop all sound
-    # CHECK IF STARTED IF SO>>> PLAY STOP ENGINE SOUND, OTHERWISE< CHECK IF aux on... etc
-    if engine_started:
-        stop_engine("lock_off")
-    elif aux_power_on:
+    if aux_power_on:
         turn_aux_power_off()
 
 def turn_aux_power_on():  #Rename this function to turn_aux_power_on_begin and change "aux_power_switch_check" to "aux_power_on_end"
@@ -328,7 +332,6 @@ def turn_aux_power_off():
     global aux_power_on
 
     print("aux_power_off")
-    #if master_key_on:
     for key in aux_mode_timer_dict: #stop all timers used in Aux Power Mode
         timer_task = aux_mode_timer_dict[key]
         timer_task.cancel()
@@ -341,8 +344,7 @@ def turn_aux_power_off():
         print("engine was started, so call stop engine")
         stop_engine("aux_off")
     else:
-    #elif master_lock_unlocked:
-        print("engine wasn't started but key is on so play aux_power_off sound")
+        print("engine wasn't started so play aux_power_off sound")
         start_engine_channel.play(aux_power_off_sound)
     if running_on_pi:
         led_flash_thread.stop_flash_start_button()
@@ -368,20 +370,25 @@ def start_engine():
     print("start_engine func. called")
     if not engine_started and aux_power_on and master_lock_unlocked:
         if not start_engine_channel.get_busy():
-            start_engine_channel.play(start_engine_sound, maxtime=4500)
-            set_engine_volume()
-            engine_channel.play(engine_sound, -1, fade_ms=7000)  # -1 parameter makes it loop non-stop
-            print('start 6 second timer to finish off start engine mode')
-            timer_task = Timer(6, finish_start_engine,())  # wait 5 secs then call finish_start_engine
-            aux_mode_timer_dict['aux_engine_start_TIMER'] = timer_task
-            timer_task.start()  # Start timer
+            if randint(1, 5) == 5;  # Random 1 in 5 times fail to start
+                print("random fail to start")
+                start_engine_channel.play(fail_to_start_engine_sound, maxtime=4500)
+            else:
+                start_engine_channel.play(start_engine_sound, maxtime=4500)
+                set_engine_volume()
+                engine_channel.play(engine_sound, -1, fade_ms=7000)  # -1 parameter makes it loop non-stop
+                print('start 6 second timer to finish off start engine mode')
+                timer_task = Timer(6, finish_start_engine,())  # wait 5 secs then call finish_start_engine
+                aux_mode_timer_dict['aux_engine_start_TIMER'] = timer_task
+                timer_task.start()  # Start timer
 
 def finish_start_engine():
     global engine_started
 
     if weapons_armed:
         arm_weapons()
-    if running_on_pi:    
+    if running_on_pi:
+        led_flash_thread.stop_flash_start_button()
         GPIO.output(engine_start_led_gpio_pin, True)
     engine_started = True
 
@@ -407,8 +414,11 @@ def stop_engine(stop_mode):
             landing_sound.play()
         else: 				# "aux_off or key_off, do same for both   ##################FIX LOGIC HERE IF STOPPED BY KEY OFF, ENGINE RUNNING
             engine_channel.play(engine_shutdown_sound)
-        if running_on_pi:    
-            GPIO.output(engine_start_led_gpio_pin, False)
+        if running_on_pi:
+            if stop_mode == "aux_off":
+                GPIO.output(engine_start_led_gpio_pin, False)
+            else:
+                led_flash_thread.start_flash_start_button()
         engine_started = False
         for key in power_mode_timer_dict: #stop all timers in Engine Power Mode
             timer_task = power_mode_timer_dict[key]
@@ -537,6 +547,7 @@ def play_tie_fighter_with_random_delays():   #Play random Tie Fighter Sounds, wi
     global aux_mode_timer_dict
     global timeElapsed
 
+    led_flash_thread.start_flash_tie_fighter_button()
     play_tie_fighter() #calls function to play Random tighter fighter sounds
     delay = randint(1,10);  # Calculate Delay
     timeElapsed += delay
@@ -547,6 +558,10 @@ def play_tie_fighter_with_random_delays():   #Play random Tie Fighter Sounds, wi
     timer_task.start() # Start Timer Task
 
 def stop_tie_fighter_with_random_delays(): #turn off Random tie fighter sounds
+    if running_on_pi:
+        led_flash_thread.stop_flash_tie_fighter_button()
+        GPIO.output(f1_led_gpio_pin, True)
+
     key='RANDOM_tie_fighter_SOUNDS_TIMER'
     if key in power_mode_timer_dict and power_mode_timer_dict[key]:   #make sure key exists & that it has a value ******************** ADD THIS CODE TO ALL TIMER CANCEL CODE ****
         timer_task = power_mode_timer_dict[key]
@@ -785,7 +800,6 @@ def read_joystick_gpio_and_keyboard():
         engage_hyperdrive()
     if GPIO.event_detected(f1_button_gpio_pin):
         print("F1 Button Pressed")
-        #Feature here
         start_enemy_fighters()
     if GPIO.event_detected(f2_button_gpio_pin):
         print("F2 Button Pressed")
@@ -795,20 +809,23 @@ def read_joystick_gpio_and_keyboard():
         #Feature here
     if GPIO.event_detected(f4_button_gpio_pin):
         print("F4 Button Pressed")
-        #Feature here
         land_xwing()
     if GPIO.event_detected(f5_button_gpio_pin):
         print("F5 Button Pressed")
-        #Feature here
+        if aux_power_on:
+            acknowledge_sound.play()
     if GPIO.event_detected(f6_button_gpio_pin):
         print("F6 Button Pressed")
-        #Feature here
+        if aux_power_on:
+            acknowledge_sound.play()
     if GPIO.event_detected(f7_button_gpio_pin):
         print("F7 Button Pressed")
-        #Feature here
+        if aux_power_on:
+            acknowledge_sound.play()
     if GPIO.event_detected(f8_button_gpio_pin):
         print("F8 Button Pressed")
-        #Feature here
+        if aux_power_on:
+            acknowledge_sound.play()
 
     # HANDLE KEYBOARD EVENTS
 #    if running_on_pi:
