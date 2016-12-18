@@ -370,7 +370,7 @@ def start_engine():
     print("start_engine func. called")
     if not engine_started and aux_power_on and master_lock_unlocked:
         if not start_engine_channel.get_busy():
-            if randint(1, 5) == 5;  # Random 1 in 5 times fail to start
+            if randint(1, 5) == 5:  # Random 1 in 5 times fail to start
                 print("random fail to start")
                 start_engine_channel.play(fail_to_start_engine_sound, maxtime=4500)
             else:
@@ -1143,10 +1143,6 @@ if __name__ == '__main__':
         read_joystick_gpio_and_keyboard()
           # Print END PROGRAM Statement
         time.sleep(0.01) #adding this gives subprocesses like detecting GPIO time to do their thing, fixed delay when pressing GPIO button
-<<<<<<< HEAD
-=======
-        
->>>>>>> origin/master
     print('END PROGRAM')
     pygame.quit() # clean exit
 
