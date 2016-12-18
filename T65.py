@@ -381,6 +381,8 @@ def finish_start_engine():
 
     if weapons_armed:
         arm_weapons()
+    if running_on_pi:    
+        GPIO.output(engine_start_led_gpio_pin, True)
     engine_started = True
 
 def set_engine_volume():
@@ -403,8 +405,10 @@ def stop_engine(stop_mode):
         if stop_mode == "landing":
             engine_channel.fadeout(3000)
             landing_sound.play()
-        else: 				# "aux_off or key_off, do same for both
+        else: 				# "aux_off or key_off, do same for both   ##################FIX LOGIC HERE IF STOPPED BY KEY OFF, ENGINE RUNNING
             engine_channel.play(engine_shutdown_sound)
+        if running_on_pi:    
+            GPIO.output(engine_start_led_gpio_pin, False)
         engine_started = False
         for key in power_mode_timer_dict: #stop all timers in Engine Power Mode
             timer_task = power_mode_timer_dict[key]
@@ -702,7 +706,7 @@ def print_instructions():
 def read_joystick_gpio_and_keyboard():
     # HANDLE GPIO EVENTS
     if GPIO.event_detected(master_lock_gpio_pin):
-        time.sleep(0.05)
+        time.sleep(0.1)
         print("GPIO MasterLock:", GPIO.input(master_lock_gpio_pin))
         #check if the value really changed or if it was a false event and ignore
         if GPIO.input(master_lock_gpio_pin) and master_lock_unlocked:  #GPIO TRUE means it is in LOCKED position
@@ -1029,18 +1033,25 @@ if running_on_pi:
     GPIO.setup(alliance_radio_gpio_pin,GPIO.IN)
     GPIO.setup(f1_button_gpio_pin,GPIO.IN)
     GPIO.setup(f1_led_gpio_pin,GPIO.OUT)
+    GPIO.output(f1_led_gpio_pin, False)
     GPIO.setup(f2_button_gpio_pin,GPIO.IN)
     GPIO.setup(f2_led_gpio_pin,GPIO.OUT)
+    GPIO.output(f2_led_gpio_pin, False)
     GPIO.setup(f3_button_gpio_pin,GPIO.IN)
     GPIO.setup(f3_led_gpio_pin,GPIO.OUT)
+    GPIO.output(f3_led_gpio_pin, False)
     GPIO.setup(f4_button_gpio_pin,GPIO.IN)
     GPIO.setup(f4_led_gpio_pin,GPIO.OUT)
+    GPIO.output(f4_led_gpio_pin, False)
     GPIO.setup(f5_button_gpio_pin,GPIO.IN)
     GPIO.setup(f5_led_gpio_pin,GPIO.OUT)
+    GPIO.output(f5_led_gpio_pin, False)
     GPIO.setup(f6_button_gpio_pin,GPIO.IN)
     GPIO.setup(f6_led_gpio_pin,GPIO.OUT)
+    GPIO.output(f6_led_gpio_pin, False)
     GPIO.setup(f7_button_gpio_pin,GPIO.IN)
     GPIO.setup(f7_and_f8_led_gpio_pin,GPIO.OUT)
+    GPIO.output(f7_and_f8_led_gpio_pin, False)
     GPIO.setup(f8_button_gpio_pin,GPIO.IN)
 
     # Enable Event Handling for GPIO Input Pins - ie. switches & buttons
@@ -1084,11 +1095,11 @@ if running_on_pi:
     else:
         landing_gear_down = True
     print ("Landing Gear Down = ", landing_gear_down)
-    if GPIO.input(arm_weapons_gpio_pin):
+    if not GPIO.input(arm_weapons_gpio_pin):
         weapons_armed = True
     else:
         weapons_armed = False
-    print ("Weapons armed = ", foil_position_closed)
+    print ("Weapons armed = ", weapons_armed)
     if not GPIO.input(r2_radio_gpio_pin):
         r2_radio_on = True
     else:
@@ -1115,6 +1126,10 @@ if __name__ == '__main__':
         read_joystick_gpio_and_keyboard()
           # Print END PROGRAM Statement
         time.sleep(0.01) #adding this gives subprocesses like detecting GPIO time to do their thing, fixed delay when pressing GPIO button
+<<<<<<< HEAD
+=======
+        
+>>>>>>> origin/master
     print('END PROGRAM')
     pygame.quit() # clean exit
 
