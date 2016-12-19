@@ -94,13 +94,13 @@ aux_power_off_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/aux_power_off.
 engine_shutdown_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/engine_shutdown.wav')
 xwing_turn_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/xwing_turn.wav') 
 xwing_turn_sound.set_volume(.3)
-#failed_start_engine_sound = # Add randomly failed starts!
 foil_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/foil.wav')  #UPDATE WITH BETTER FOIL SOUND or make louder ???*****
 landing_gear_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/landing_gear.wav') 
 landing_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/landing.wav')
 
 # load groups of sound files
 r2_sound_files = glob.glob("/home/pi/git/T65/sounds/r2d2_*.wav")
+damaged_r2_sound_files = glob.glob("home/pi/git/T65/sounds/injured_r2d2_*.wav")
 chewy_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_chew*.wav")
 alliance_radio_sound_files = glob.glob("/home/pi/git/T65/sounds/radio_*.wav")
 yoda_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_yod*.wav")
@@ -122,7 +122,7 @@ yoda_channel = pygame.mixer.Channel(5)
 chewy_channel = pygame.mixer.Channel(6)
 hyperdrive_channel = pygame.mixer.Channel(7) 
 foil_channel = pygame.mixer.Channel(9)
-
+get_damaged_channel = pygame.mixer.Channel(11)
 
 ################################ START OF FLASHY LIGHT SAMPLE CODE ############################
 #Flashy Light Code - to control LEDs
@@ -670,6 +670,15 @@ def play_alarm():
         print('function play alarm')
         alarm_sound.play()
 
+
+def get_damaged()
+    if aux_power_on:
+        if not get_damaged_channel.get_busy():
+            soundwav = random.choice(damaged_r2_sound_files)
+            musicsound1 = pygame.mixer.Sound(soundwav)
+            get_damaged_channel.play(musicsound1)
+
+
 def turn_off_microphone():
     if aux_power_on:
         print('microphone off')  #consider doing this on a channel so it can't repeat
@@ -805,10 +814,10 @@ def read_joystick_gpio_and_keyboard():
         start_enemy_fighters()
     if GPIO.event_detected(f2_button_gpio_pin):
         print("F2 Button Pressed")
-        #Feature here
+        get_damaged()
     if GPIO.event_detected(f3_button_gpio_pin):
         print("F3 Button Pressed")
-        #Feature here
+        play_alarm()
     if GPIO.event_detected(f4_button_gpio_pin):
         print("F4 Button Pressed")
         land_xwing()
