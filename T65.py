@@ -100,7 +100,7 @@ landing_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/landing.wav')
 
 # load groups of sound files
 r2_sound_files = glob.glob("/home/pi/git/T65/sounds/r2d2_*.wav")
-damaged_r2_sound_files = glob.glob("home/pi/git/T65/sounds/injured_r2d2_*.wav")
+damaged_r2_sound_files = glob.glob("/home/pi/git/T65/sounds/injured_r2d2*.wav")
 chewy_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_chew*.wav")
 alliance_radio_sound_files = glob.glob("/home/pi/git/T65/sounds/radio_*.wav")
 yoda_sound_files = glob.glob("/home/pi/git/T65/sounds/Star_Wars_Soundboard_yod*.wav")
@@ -347,6 +347,7 @@ def turn_aux_power_off():
         print("engine wasn't started so play aux_power_off sound")
         start_engine_channel.play(aux_power_off_sound)
     if running_on_pi:
+        led_flash_thread.stop_flash_tie_fighter_button()
         led_flash_thread.stop_flash_start_button()
         led_flash_thread.stop_aux_power_sequence()
         GPIO.output(f7_and_f8_led_gpio_pin, False)
@@ -401,10 +402,10 @@ def set_engine_volume():
     #    engine_volume = ((1+(-1 * throttle_position)) * .5)+.01 #convert the throttle that goes from +1 to 1 (in reverse), so that it goes from 25% to 100% or set volume expect 0-1 so .5-1
     #    print ("setting volume to: ",engine_volume)
     #    engine_channel.set_volume(engine_volume)
-    #	engine_sound.set_volume(engine_volume)
-    #   else:
-    engine_sound.set_volume(.25)
-    engine_channel.set_volume(.25)
+   # 	engine_sound.set_volume(engine_volume)
+    #else:
+    engine_sound.set_volume(.35)
+    engine_channel.set_volume(.35)
 
 def stop_engine(stop_mode):
     global engine_started
@@ -671,7 +672,7 @@ def play_alarm():
         alarm_sound.play()
 
 
-def get_damaged()
+def get_damaged():
     if aux_power_on:
         if not get_damaged_channel.get_busy():
             soundwav = random.choice(damaged_r2_sound_files)
@@ -817,7 +818,7 @@ def read_joystick_gpio_and_keyboard():
         get_damaged()
     if GPIO.event_detected(f3_button_gpio_pin):
         print("F3 Button Pressed")
-        play_alarm()
+        acknowledge_sound.play()
     if GPIO.event_detected(f4_button_gpio_pin):
         print("F4 Button Pressed")
         land_xwing()
