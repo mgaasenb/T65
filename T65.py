@@ -316,6 +316,7 @@ def turn_aux_power_on():  #Rename this function to turn_aux_power_on_begin and c
     
 def aux_power_switch_check(): #called from turn_aux_power_on, check switches & turns on appropriate actions
     global aux_power_on
+    aux_power_on = True
     if running_on_pi:
         if not GPIO.input(r2_radio_gpio_pin): #R2 on
             print("r2 radio is in on position, call start random r2")
@@ -324,8 +325,7 @@ def aux_power_switch_check(): #called from turn_aux_power_on, check switches & t
             print("alliance radio is in on position, call start random radio")
             play_alliance_radio_with_random_delays()
         led_flash_thread.start_flash_start_button()
-    aux_power_on = True
-    #led_flash_thread.stop()
+        #led_flash_thread.stop()
     print("aux power flag set to True")
 
 def turn_aux_power_off():
@@ -411,6 +411,8 @@ def stop_engine(stop_mode):
     global engine_started
 
     if engine_started: #only stop if already started
+        if running_on_pi:
+            led_flash_thread.stop_flash_tie_fighter_button()
         if stop_mode == "landing":
             engine_channel.fadeout(3000)
             landing_sound.play()
@@ -459,17 +461,20 @@ def play_r2_with_random_delays():
     global r2_radio_on
 
     r2_radio_on = True
-    play_r2() #calls function to play Random R2 sounds
-    delay = randint(2,10);
-    timeElapsed += delay
-    print(': play_r2_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
-    timer_task = Timer(delay, play_r2_with_random_delays, ()) # Create New Timer Task
-    aux_mode_timer_dict['RANDOM_R2_SOUNDS_TIMER'] = timer_task
-    timer_task.start()  # Start Timer Task
+    if aux_power_on:
+        play_r2() #calls function to play Random R2 sounds
+        delay = randint(2,10);
+        timeElapsed += delay
+        print(': play_r2_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
+        timer_task = Timer(delay, play_r2_with_random_delays, ()) # Create New Timer Task
+        aux_mode_timer_dict['RANDOM_R2_SOUNDS_TIMER'] = timer_task
+        timer_task.start()  # Start Timer Task
 
 def stop_r2_with_random_delays(): #turn off Random R2 sounds
     global r2_radio_on
+    print("stop R2 with Random Delays")
     if r2_channel.get_busy():
+        print("stop channel")
         r2_channel.stop()
     r2_radio_on = False
     timer_task = aux_mode_timer_dict['RANDOM_R2_SOUNDS_TIMER']
@@ -490,13 +495,14 @@ def play_alliance_radio_with_random_delays():
     global alliance_radio_on
 
     alliance_radio_on = True
-    play_radio() #calls function to play Random radio sounds
-    delay = randint(1,3);  # Calculate Delay
-    timeElapsed += delay
-    print(': play_alliance_radio_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
-    timer_task = Timer(delay, play_alliance_radio_with_random_delays, ())  # Create New Timer Task
-    aux_mode_timer_dict['RANDOM_alliance_radio_SOUNDS_TIMER'] = timer_task  # Start Timer Task
-    timer_task.start()
+    if aux_power_on:
+        play_radio() #calls function to play Random radio sounds
+        delay = randint(1,3);  # Calculate Delay
+        timeElapsed += delay
+        print(': play_alliance_radio_with_random_delays called with a delay of: ', delay, 'Time Elapsed: ', timeElapsed)
+        timer_task = Timer(delay, play_alliance_radio_with_random_delays, ())  # Create New Timer Task
+        aux_mode_timer_dict['RANDOM_alliance_radio_SOUNDS_TIMER'] = timer_task  # Start Timer Task
+        timer_task.start()
 
 def stop_alliance_radio_with_random_delays(): #turn off Random radio sounds
     global alliance_radio_on
@@ -585,7 +591,8 @@ def engage_hyperdrive():
         if not hyperdrive_channel.get_busy():  
             if foil_position_closed:
                 hyperdrive_channel.play(hyperdrive_sound)
-                stop_tie_fighter_with_random_delays()
+                #stop_tie_fighter_with_random_delays()
+                stop_enemy_fighters()
             else:
                 error_sound.play()
 
