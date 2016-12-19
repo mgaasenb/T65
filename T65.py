@@ -206,9 +206,9 @@ class led_flash_thread_class(Thread):
                 GPIO.output(engine_start_led_gpio_pin, False)
                 time.sleep(.5)
             elif self._flash_tie_fighter_button_led:
-                GPIO.output(f1_led_gpio_pin, True)
-                time.sleep(.2)
                 GPIO.output(f1_led_gpio_pin, False)
+                time.sleep(.2)
+                GPIO.output(f1_led_gpio_pin, True)
                 time.sleep(.2)
 
     def stop_flash_start_button(self):    #Used for LED Test
@@ -291,7 +291,7 @@ def unlock():
     master_lock_unlocked = True
     print("Master key is ON")
     #check if aux power switch is on position, if so turn on aux_power
-    if  aux_power_on: #Aux on
+    if GPIO.input(aux_power_gpio_pin): #Aux on
         print("Aux switch is in on position, call aux_power_on func")
         turn_aux_power_on()
 
@@ -378,6 +378,8 @@ def start_engine():
                 set_engine_volume()
                 engine_channel.play(engine_sound, -1, fade_ms=7000)  # -1 parameter makes it loop non-stop
                 print('start 6 second timer to finish off start engine mode')
+                if running_on_pi:
+                    led_flash_thread.stop_flash_start_button()
                 timer_task = Timer(6, finish_start_engine,())  # wait 5 secs then call finish_start_engine
                 aux_mode_timer_dict['aux_engine_start_TIMER'] = timer_task
                 timer_task.start()  # Start timer
@@ -388,7 +390,6 @@ def finish_start_engine():
     if weapons_armed:
         arm_weapons()
     if running_on_pi:
-        led_flash_thread.stop_flash_start_button()
         GPIO.output(engine_start_led_gpio_pin, True)
     engine_started = True
 
@@ -528,6 +529,7 @@ def start_enemy_fighters():
     if engine_started:
         if not tie_fighter_channel.get_busy():
             print('not busy')
+            led_flash_thread.start_flash_tie_fighter_button()
             tie_fighter_channel.play(alarm_sound)
             timer_task = Timer(5, play_tie_fighter_with_random_delays, ())  # Create New Timer Task
             power_mode_timer_dict['tie_fighter_alarm_TIMER'] = timer_task
