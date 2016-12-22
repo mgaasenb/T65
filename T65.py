@@ -298,10 +298,11 @@ def unlock():
 def lock():
     global master_lock_unlocked
 
-    master_lock_unlocked = False
     print("Master key is OFF")
     if aux_power_on:
         turn_aux_power_off()
+    master_lock_unlocked = False
+
 
 def turn_aux_power_on():  #Rename this function to turn_aux_power_on_begin and change "aux_power_switch_check" to "aux_power_on_end"
     print("aux_power_on function entered")
@@ -343,7 +344,7 @@ def turn_aux_power_off():
     if engine_started:
         print("engine was started, so call stop engine")
         stop_engine("aux_off")
-    else:
+    elif master_lock_unlocked:
         print("engine wasn't started so play aux_power_off sound")
         start_engine_channel.play(aux_power_off_sound)
     if running_on_pi:
