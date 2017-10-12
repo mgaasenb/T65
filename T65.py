@@ -74,19 +74,21 @@ else:
 
 
 # load sounds files
+alarm_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/alarm_02.wav')
 engine_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/engine.wav')
 laser1_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/laser1.wav')
 laser2_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/laser2.wav')
 laser3_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/laser3.wav')
 weapons_armed_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/weapons_armed.wav')
-alarm_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/alarm_02.wav')
-torpedo_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/torpedo.wav') 
+torpedo_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/torpedo.wav')
 button_press_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/button_press.wav') 
 button_press_sound.set_volume(.2)
 acknowledge_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/acknowledge.wav')
 error_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/error.wav')
 microphone_on_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/mic_static.wav')  
 hyperdrive_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/hyperdrive.wav')  
+shields_up_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/shieldsup.wav')
+shields_down_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/shieldsdown.wav')
 start_engine_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/startengine.wav')
 fail_to_start_engine_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/fail_to_start.wav')
 aux_power_on_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/aux_power_on.wav')
@@ -97,6 +99,9 @@ xwing_turn_sound.set_volume(.3)
 foil_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/foil.wav')  #UPDATE WITH BETTER FOIL SOUND or make louder ???*****
 landing_gear_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/landing_gear.wav') 
 landing_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/landing.wav')
+explosion1_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/explosion_01.wav')
+explosion2_sound = pygame.mixer.Sound('/home/pi/git/T65/sounds/explosion_02.wav')
+
 
 # load groups of sound files
 r2_sound_files = glob.glob("/home/pi/git/T65/sounds/r2d2_*.wav")
@@ -123,6 +128,7 @@ chewy_channel = pygame.mixer.Channel(6)
 hyperdrive_channel = pygame.mixer.Channel(7) 
 foil_channel = pygame.mixer.Channel(9)
 get_damaged_channel = pygame.mixer.Channel(11)
+shields_channel = pygame.mixer.Channel(12)
 
 ################################ START OF FLASHY LIGHT SAMPLE CODE ############################
 #Flashy Light Code - to control LEDs
@@ -280,7 +286,6 @@ led_flash_thread.start()
 #            led_flash_thread.start_flash_start_button()
 
 #led_flash_tread.starter_begin_flash()
-
 
 
 ################################ GAME FUNCTIONS ############################
@@ -674,11 +679,15 @@ def turn_on_microphone():
         print('microphone on')
         microphone_on_sound.play()
 
+def turn_off_microphone():
+    if aux_power_on:
+        print('microphone off')  #consider doing this on a channel so it can't repeat
+        microphone_on_sound.play()
+
 def play_alarm():
     if aux_power_on:
         print('function play alarm')
         alarm_sound.play()
-
 
 def get_damaged():
     if aux_power_on:
@@ -686,12 +695,6 @@ def get_damaged():
             soundwav = random.choice(damaged_r2_sound_files)
             musicsound1 = pygame.mixer.Sound(soundwav)
             get_damaged_channel.play(musicsound1)
-
-
-def turn_off_microphone():
-    if aux_power_on:
-        print('microphone off')  #consider doing this on a channel so it can't repeat
-        microphone_on_sound.play()
 
 def play_chewy():
     print('play_chewy function entered.')
@@ -707,11 +710,33 @@ def play_hat():
         print('joystick hat button moved')
         acknowledge_sound.play()
 
+def shields_up():
+    if engine_started:
+        print('Shields Up!')
+        if not shields_channel.get_busy():
+            shields_channel.play(shields_up_sound)
+
+def shields_down():
+    if engine_started:
+        print('Shields Down!')
+        if not shields_channel.get_busy():
+            shields_channel.play(shields_down_sound)
+
+def explosion1():
+    if engine_started:
+        print('Explosion1')
+        explosion1_sound.play()
+
+def explosion2():
+    if engine_started:
+        print('Explosion2')
+        explosion2_sound.play()
+
 def play_turn_sound():
     if engine_started:
         print('Xwing turning moved')
         xwing_turn_sound.play()
-
+"""""
 def print_instructions():
     # Print BEGIN PROGRAM Statement
     print('MAKE SURE LITTLE WINDOW HAS FOCUS FOR KEYBOARD KEYS ENTRY TO WORK')
@@ -736,6 +761,7 @@ def print_instructions():
     print('Press F1 to hear Yoda')
     print('Press F2 to hear Chewy')
     print('Press F5 to land - gear must be down')
+"""
 
 ################################ HANDLE INPUT ############################
 def read_joystick_gpio_and_keyboard():
@@ -847,8 +873,8 @@ def read_joystick_gpio_and_keyboard():
         if aux_power_on:
             acknowledge_sound.play()
 
+"""""
     # HANDLE KEYBOARD EVENTS
-#    if running_on_pi:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -958,6 +984,7 @@ def read_joystick_gpio_and_keyboard():
             if event.key == pygame.K_a:
                 print("Key a up")
                 stop_alliance_radio_with_random_delays()
+"""
 
         # HANDLE JOYSTICK EVENTS
         if event.type == pygame.JOYBUTTONDOWN:
@@ -975,7 +1002,7 @@ def read_joystick_gpio_and_keyboard():
             elif button == 5:
                 select_weapon(4)
             elif button == 6: #
-                #add C3PO sounds here ***********************************
+                #add other sounds here ***********************************
                 print('need function here')
             elif button == 7:
                 play_chewy()
@@ -984,7 +1011,7 @@ def read_joystick_gpio_and_keyboard():
             elif button == 9:
                 play_yoda()
             elif button == 10:
-                #add Explosion sound here ***********************************
+                #add Some functionality Here***********************************
                 print('need function here')
             elif button == 11:
                 play_r2()
@@ -997,7 +1024,17 @@ def read_joystick_gpio_and_keyboard():
         if event.type == pygame.JOYHATMOTION:
             if event.hat == 0:
                 print("event value hat axis 0: {}".format(event.value))
-                play_hat()
+                if event.value == (1, 0): #right hat
+                    explosion1()
+                elif event.value == (-1, 0): #left hat
+                    explosion2()
+                elif event.value == (0, 1):  #up hat
+                    shields_up()
+                elif event.value == (0, -1):  #down hat
+                    shields_down()
+
+
+"""""  #For now disabling Turn Sounds and Volume, see if this helps performance
         if event.type == pygame.JOYAXISMOTION:
             if event.axis == 0:
                 #print("event value axis 0: {}".format(event.value))
@@ -1018,6 +1055,7 @@ def read_joystick_gpio_and_keyboard():
                 #print("event value axis 3: {}".format(event.value))
                 set_engine_volume()
                 #self.verticalPosition = event.value
+"""
 
 ################################ INITIALIZE GPIO ############################
 #define GPIO Pin assignment
@@ -1158,7 +1196,7 @@ else:
 gameloop = True
 if __name__ == '__main__':
     global aux_mode_timer_dict      # Need this here to say that we want to modify the global copy
-    print_instructions()
+    #print_instructions() #removed keyboard support, no instructions needed.
     while gameloop:
         read_joystick_gpio_and_keyboard()
           # Print END PROGRAM Statement
